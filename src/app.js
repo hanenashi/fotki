@@ -15,10 +15,11 @@ window.Fotki.App = {
     // Paging
     nextPageUrl: null,
     isFetching: false,
-    dateLimitMin: null, // Limit fetching (From Date)
+    dateLimitMin: null, 
 
     init: function() {
-        window.Fotki.Utils.loadSettings();
+        const U = window.Fotki.Utils;
+        U.loadSettings();
         window.Fotki.Lightbox.init();
         this.injectButton();
         this.buildOverlay();
@@ -174,17 +175,18 @@ window.Fotki.App = {
     },
 
     bindKeys: function() {
+        const self = this;
         window.addEventListener('keydown', (e) => {
-            if (!this.isOpen) return;
+            if (!self.isOpen) return;
             
             const isEsc = (e.key === 'Escape' || e.keyCode === 27);
             const isLeft = (e.key === 'ArrowLeft' || e.keyCode === 37);
             const isRight = (e.key === 'ArrowRight' || e.keyCode === 39);
 
-            if (this.isLightboxOpen) {
-                if (isEsc) { e.preventDefault(); e.stopPropagation(); this.closeLightbox(); }
-                else if (isLeft) this.changeImage(-1);
-                else if (isRight) this.changeImage(1);
+            if (self.isLightboxOpen) {
+                if (isEsc) { e.preventDefault(); e.stopPropagation(); self.closeLightbox(); }
+                else if (isLeft) self.changeImage(-1);
+                else if (isRight) self.changeImage(1);
                 return;
             }
 
@@ -195,10 +197,10 @@ window.Fotki.App = {
                     return;
                 }
                 const U = window.Fotki.Utils;
-                if (this.viewState === 'photos' && U.settings.groupByUser) {
-                    this.goBack();
+                if (self.viewState === 'photos' && U.settings.groupByUser) {
+                    self.goBack();
                 } else {
-                    this.close();
+                    self.close();
                 }
             }
         }, true);
@@ -221,13 +223,11 @@ window.Fotki.App = {
                 
                 // 4. Remove User Card from Root View if exists
                 if (this.viewState === 'root') {
-                    const userCard = document.querySelector(`.fg-user-card[data-user="${badItem.user}"]`);
+                    // Safe selector logic
+                    const cards = Array.from(document.querySelectorAll('.fg-user-card'));
+                    const userCard = cards.find(el => el.dataset.user === badItem.user);
                     if (userCard) userCard.remove();
                 }
-            } else if (this.viewState === 'root') {
-                // User still has photos, but maybe the cover thumb died?
-                // Re-rendering the specific card is hard, but we can verify thumbnail
-                // Logic already handled in renderRootUsers by failing over or cross.
             }
         }
     },
@@ -266,9 +266,9 @@ window.Fotki.App = {
         // 3. Reset & Start
         U.showLoader();
         this.resetData();
-        this.nextPageUrl = startUrl; // Override normal pager
+        this.nextPageUrl = startUrl; 
         
-        // Trigger load cycle (which will fetch the custom URL first)
+        // Trigger load cycle 
         this.loadMore(true); 
     },
 
@@ -284,12 +284,6 @@ window.Fotki.App = {
             const dateText = linkEl ? linkEl.innerText.trim() : '';
             const timestamp = U.parseCzechDate(dateText);
 
-            // Date Limit Check (Stop loading if we went too far back)
-            if (this.dateLimitMin && timestamp < this.dateLimitMin) {
-                // If we hit a post older than our limit, we can conceptually stop
-                // But we should finish the page just in case of sorting oddities
-            }
-
             post.querySelectorAll('.content img').forEach(img => {
                 if (!img.src.includes('cloudfront.net') && !img.src.includes('okoun.cz/images/')) {
                     if (!img.hasAttribute('width') || img.width > 30) {
@@ -299,9 +293,7 @@ window.Fotki.App = {
                             link: link, date: dateText, ts: timestamp, user: user
                         };
                         
-                        // Check Date Range again for individual item inclusion
                         if (this.dateLimitMin && timestamp < this.dateLimitMin) {
-                            // Too old, skip
                             return; 
                         }
 
@@ -314,19 +306,15 @@ window.Fotki.App = {
             });
         });
         
-        // Check next page link in the document
         const nextEl = doc.querySelector('.pager .older a');
         let nextLink = nextEl ? nextEl.href : null;
 
-        // Hard Stop if we passed the date limit significantly
-        // (Check the last item on page to see if it's older than limit)
-        if (this.dateLimitMin && nextLink) {
-            // This is a heuristic. If we scraped 0 items because they were all too old, kill next link.
-            // Or look at the last timestamp extracted. 
-            // Simple approach: if page had items but all were filtered out, likely we are done.
-        }
-
         return { count, nextLink };
+    },
+
+    findNextPage: function(doc) {
+        const el = doc.querySelector('.pager .older a'); 
+        return el ? el.href : null;
     },
 
     sortData: function() {
@@ -340,12 +328,12 @@ window.Fotki.App = {
         });
     },
 
-    // initialLoad: boolean to distinguish "first load of new filter" vs "user clicked button"
     loadMore: async function(initialLoad = false) {
         if (!this.nextPageUrl || this.isFetching) return;
         
+        const self = this;
         const U = window.Fotki.Utils;
-        this.isFetching = true;
+        self.isFetching = true;
         
         const btn = document.querySelector('.fg-load-more-btn');
         if(btn) {
@@ -354,54 +342,49 @@ window.Fotki.App = {
         }
 
         const targetCount = U.settings.batchSize;
-        const MAX_PAGES_LIMIT = 10; // Safety brake
+        const MAX_PAGES_LIMIT = 10; 
         
         let loadedPhotos = 0;
         let pagesFetched = 0;
         let stopLoading = false;
 
         try {
-            while (loadedPhotos < targetCount && pagesFetched < MAX_PAGES_LIMIT && this.nextPageUrl && !stopLoading) {
-                // Update Button
+            while (loadedPhotos < targetCount && pagesFetched < MAX_PAGES_LIMIT && self.nextPageUrl && !stopLoading) {
                 if (pagesFetched > 0 && btn) {
                     btn.textContent = `Načítám... (nalezeno ${loadedPhotos})`;
                 }
 
-                const response = await fetch(this.nextPageUrl);
+                const response = await fetch(self.nextPageUrl);
                 const text = await response.text();
                 const parser = new DOMParser();
                 const newDoc = parser.parseFromString(text, 'text/html');
 
-                const result = this.extractData(newDoc);
+                const result = self.extractData(newDoc);
                 loadedPhotos += result.count;
                 pagesFetched++;
-                this.nextPageUrl = result.nextLink;
+                self.nextPageUrl = result.nextLink;
 
-                // Stop if we hit date limit (found no items on a page because they were filtered out?)
-                // Or if extractData logic flagged it.
-                if (!this.nextPageUrl) stopLoading = true;
+                if (!self.nextPageUrl) stopLoading = true;
                 
-                // Heuristic: If we are searching a date range, and we fetched a page but kept 0 items,
-                // and we have a date limit set, assume we passed the boundary.
-                if (this.dateLimitMin && result.count === 0 && pagesFetched > 1) {
+                if (self.dateLimitMin && result.count === 0 && pagesFetched > 1) {
                      stopLoading = true;
-                     this.nextPageUrl = null; // Kill "More" button
+                     self.nextPageUrl = null; 
                 }
             }
             
-            this.refreshView();
+            self.refreshView();
             console.log(`Fotki: Batch finished. ${loadedPhotos} photos.`);
 
         } catch (e) {
             console.error('Fotki: Error loading more', e);
             if(btn) btn.textContent = "Chyba načítání";
         } finally {
-            this.isFetching = false;
-            U.hideLoader(); // Ensure global loader is off if this was initial
+            self.isFetching = false;
+            U.hideLoader();
             
             const freshBtn = document.querySelector('.fg-load-more-btn');
             if (freshBtn) {
-                if (this.nextPageUrl) {
+                if (self.nextPageUrl) {
                     freshBtn.textContent = 'Načíst starší';
                     freshBtn.disabled = false;
                 } else {
@@ -412,10 +395,11 @@ window.Fotki.App = {
     },
 
     forceRefresh: function() {
-        window.Fotki.Utils.showLoader();
+        const U = window.Fotki.Utils;
+        U.showLoader();
         setTimeout(() => {
             this.refreshView();
-            window.Fotki.Utils.hideLoader();
+            U.hideLoader();
         }, 10);
     },
 
@@ -462,7 +446,7 @@ window.Fotki.App = {
         const users = Object.keys(this.groupedData);
         if (users.length === 0) {
             target.innerHTML = '<div style="color:#666; padding:20px; text-align:center;">Žádné fotky.</div>';
-            this.appendLoadMoreBtn(target); // Even if empty, allow loading more
+            this.appendLoadMoreBtn(target); 
             return;
         }
 
@@ -472,7 +456,7 @@ window.Fotki.App = {
             
             const card = document.createElement('div');
             card.className = 'fg-user-card';
-            card.dataset.user = user; // Identify for pruning
+            card.dataset.user = user; 
             card.onclick = () => this.renderUserPhotos(user);
             
             card.innerHTML = `
@@ -486,16 +470,11 @@ window.Fotki.App = {
             const img = card.querySelector('img');
             const item = photos[0];
             
-            // Root Thumbnail Error Handler
             img.onerror = () => {
                 if (img.src !== item.src) {
-                    img.src = item.src; // Try full res
+                    img.src = item.src; 
                 } else {
-                    // Full res failed. Prune this specific item.
                     this.pruneItem(item);
-                    // If user still exists after prune, try to re-render card with new first image
-                    // Simple hack: reload current view
-                    // To avoid infinite loops, we just show error placeholder for now
                     img.src = 'https://okoun.cz/images/icons/cross.gif';
                     img.style.opacity = 0.3;
                 }
@@ -508,7 +487,8 @@ window.Fotki.App = {
     },
 
     renderUserPhotos: function(user) {
-        window.Fotki.Utils.showLoader();
+        const U = window.Fotki.Utils;
+        U.showLoader();
         setTimeout(() => {
             this.viewState = 'photos';
             this.selectedUser = user;
@@ -520,7 +500,6 @@ window.Fotki.App = {
             target.innerHTML = '';
 
             this.currentList = this.groupedData[user];
-            // If user was pruned away while navigating?
             if (!this.currentList) {
                 this.goBack();
                 return;
@@ -529,7 +508,7 @@ window.Fotki.App = {
             this.renderPhotoCards(target, this.currentList, false);
             this.appendLoadMoreBtn(target);
 
-            window.Fotki.Utils.hideLoader();
+            U.hideLoader();
         }, 50);
     },
 
@@ -621,25 +600,25 @@ window.Fotki.App = {
     toggle: function() { this.isOpen ? this.close() : this.open(); },
 
     open: function() {
+        const self = this;
         const root = document.getElementById('fotki-gallery-root');
         const U = window.Fotki.Utils;
         root.style.display = 'flex';
         document.body.style.overflow = 'hidden';
-        this.isOpen = true;
+        self.isOpen = true;
         
-        if (this.allItems.length === 0) {
+        if (self.allItems.length === 0) {
             U.showLoader();
-            this.resetData();
+            self.resetData();
             setTimeout(() => {
-                const res = this.extractData(document); 
-                this.nextPageUrl = this.findNextPage(document);
+                const res = self.extractData(document); 
+                self.nextPageUrl = res.nextLink; // FIX: Use result from extraction
                 
-                // If current page didn't have enough photos, load more immediately
-                if (res.count < U.settings.batchSize && this.nextPageUrl) {
-                    this.loadMore();
+                if (res.count < U.settings.batchSize && self.nextPageUrl) {
+                    self.loadMore();
                 } else {
-                    if (U.settings.groupByUser) this.renderRootUsers();
-                    else this.renderFlatList();
+                    if (U.settings.groupByUser) self.renderRootUsers();
+                    else self.renderFlatList();
                     U.hideLoader();
                 }
             }, 50);
