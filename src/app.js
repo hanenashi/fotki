@@ -8,9 +8,13 @@ window.Fotki.App = {
 
     // Data
     allItems: [],
-    groupedData: [],
+    groupedData: {},
     currentList: [],
     currentIndex: 0,
+    
+    // Paging
+    nextPageUrl: null,
+    isFetching: false,
 
     init: function() {
         window.Fotki.Utils.loadSettings();
@@ -33,9 +37,7 @@ window.Fotki.App = {
     },
 
     buildOverlay: function() {
-        // Get version from Userscript Manager (Tampermonkey/Violentmonkey)
         const version = (typeof GM_info !== 'undefined' && GM_info.script) ? GM_info.script.version : 'Dev';
-
         const root = document.createElement('div');
         root.id = 'fotki-gallery-root';
         root.innerHTML = `
@@ -170,14 +172,25 @@ window.Fotki.App = {
         }, true);
     },
 
-    // --- Scraping & Sorting ---
+    // --- Scraping & Paging ---
 
-    scrape: function() {
+    findNextPage: function(doc) {
+        // Okoun pager logic: look for .older link
+        const el = doc.querySelector('.pager .older a'); 
+        return el ? el.href : null;
+    },
+
+    resetData: function() {
         this.groupedData = {};
         this.allItems = [];
-        const U = window.Fotki.Utils;
+        this.nextPageUrl = null;
+    },
 
-        document.querySelectorAll('.listing .item').forEach(post => {
+    extractData: function(doc) {
+        const U = window.Fotki.Utils;
+        let count = 0;
+
+        doc.querySelectorAll('.listing .item').forEach(post => {
             const userEl = post.querySelector('.meta .user');
             const user = userEl ? userEl.innerText.trim() : 'Anonym';
             
@@ -195,11 +208,12 @@ window.Fotki.App = {
                         this.allItems.push(item);
                         if (!this.groupedData[user]) this.groupedData[user] = [];
                         this.groupedData[user].push(item);
+                        count++;
                     }
                 }
             });
         });
-        this.sortData();
+        return count;
     },
 
     sortData: function() {
@@ -211,6 +225,48 @@ window.Fotki.App = {
         Object.keys(this.groupedData).forEach(u => {
             this.groupedData[u].sort(sortFn);
         });
+    },
+
+    loadMore: async function() {
+        if (!this.nextPageUrl || this.isFetching) return;
+        
+        this.isFetching = true;
+        const btn = document.querySelector('.fg-load-more-btn');
+        if(btn) {
+            btn.textContent = "Načítám...";
+            btn.disabled = true;
+        }
+
+        try {
+            // Fetch older page
+            const response = await fetch(this.nextPageUrl);
+            const text = await response.text();
+            
+            // Parse HTML
+            const parser = new DOMParser();
+            const newDoc = parser.parseFromString(text, 'text/html');
+
+            // Extract items
+            const newCount = this.extractData(newDoc);
+            
+            // Update next link
+            this.nextPageUrl = this.findNextPage(newDoc);
+            
+            // Refresh
+            this.refreshView();
+            
+            // Feedback?
+            console.log(`Fotki: Loaded ${newCount} new photos.`);
+
+        } catch (e) {
+            console.error('Fotki: Error loading more', e);
+            if(btn) {
+                btn.textContent = "Chyba načítání";
+                setTimeout(() => { btn.disabled = false; btn.textContent = "Načíst starší"; }, 2000);
+            }
+        } finally {
+            this.isFetching = false;
+        }
     },
 
     forceRefresh: function() {
@@ -236,6 +292,22 @@ window.Fotki.App = {
     },
 
     // --- Renderers ---
+
+    appendLoadMoreBtn: function(target) {
+        // Only append if there is a next page
+        if (!this.nextPageUrl) return;
+
+        const container = document.createElement('div');
+        container.className = 'fg-load-more-container';
+        
+        const btn = document.createElement('button');
+        btn.className = 'fg-load-more-btn';
+        btn.textContent = 'Načíst starší';
+        btn.onclick = () => this.loadMore();
+        
+        container.appendChild(btn);
+        target.appendChild(container);
+    },
 
     renderRootUsers: function() {
         this.viewState = 'root';
@@ -268,6 +340,8 @@ window.Fotki.App = {
             `;
             target.appendChild(card);
         });
+
+        this.appendLoadMoreBtn(target);
     },
 
     renderUserPhotos: function(user) {
@@ -284,6 +358,12 @@ window.Fotki.App = {
 
             this.currentList = this.groupedData[user];
             this.renderPhotoCards(target, this.currentList, false);
+            
+            // In User View, we usually don't show Load More for the *whole* site, 
+            // but we could if we wanted to find more photos of *this* user.
+            // For now, let's keep it simple and add it to see if we find more of this user.
+            this.appendLoadMoreBtn(target);
+
             window.Fotki.Utils.hideLoader();
         }, 50);
     },
@@ -299,6 +379,7 @@ window.Fotki.App = {
         
         this.currentList = this.allItems;
         this.renderPhotoCards(target, this.allItems, true);
+        this.appendLoadMoreBtn(target);
     },
 
     renderPhotoCards: function(container, photos, showUserLabel) {
@@ -368,13 +449,25 @@ window.Fotki.App = {
         root.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         this.isOpen = true;
-        U.showLoader();
-        setTimeout(() => {
-            this.scrape(); 
-            if (U.settings.groupByUser) this.renderRootUsers();
-            else this.renderFlatList();
-            U.hideLoader();
-        }, 50);
+        
+        // Reset data on fresh open or persist? 
+        // Let's reset to ensure we get current page state, 
+        // then scrape current page.
+        if (this.allItems.length === 0) {
+            U.showLoader();
+            this.resetData();
+            setTimeout(() => {
+                this.extractData(document); 
+                this.nextPageUrl = this.findNextPage(document);
+                
+                if (U.settings.groupByUser) this.renderRootUsers();
+                else this.renderFlatList();
+                U.hideLoader();
+            }, 50);
+        } else {
+             // If we already scraped, just show it.
+            document.getElementById('fotki-gallery-root').style.display = 'flex';
+        }
     },
 
     close: function() {

@@ -69,6 +69,21 @@ window.Fotki.styles = `
 
     /* Content Area */
     .fg-scroll-area { flex: 1; overflow-y: scroll; padding: 20px; }
+    
+    /* Load More Button */
+    .fg-load-more-container {
+        grid-column: 1 / -1;
+        padding: 20px 0;
+        text-align: center;
+    }
+    .fg-load-more-btn {
+        background: #222; border: 1px solid #444; color: #ddd;
+        padding: 10px 30px; font-size: 14px; cursor: pointer;
+        border-radius: 4px; transition: all 0.2s;
+        font-family: inherit;
+    }
+    .fg-load-more-btn:hover { background: #d35400; border-color: #e67e22; color: #fff; }
+    .fg-load-more-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* Grid - Users */
     .fg-user-grid {
