@@ -20,7 +20,7 @@ window.Fotki.App = {
     // Configuration
     deadHosts: [
         'tinypic.com', 'fbcdn.net', 'sklad.obrazku.cz', 'media.novinky.cz', 
-        'img.ihned.cz', 'fail.cz', 'flickr.com', 'static.flickr.com',
+        'img.ihned.cz', 'fail.cz', 
         'images.paraorkut.com', 'imgup.eu', 'like.cz', 'rajce.idnes.cz',
         'ukazto.com', 'q3.cz', 'downloadsedge.com', 'guzer.com',
         'imagesocket.com', 'tides.ws', 'kartinki.cz', 'mine.nu',
@@ -28,6 +28,14 @@ window.Fotki.App = {
         'cosmoboy.cz', 'nepracuje.cz', 'nevk.us', 'mfuhrer.net',
         'img.galeria.ultrahost.pl', 's3.tinypic.com', 'img1.rajce.idnes.cz',
         'img2.rajce.idnes.cz', 'img5.rajce.idnes.cz'
+    ],
+
+    // Hosts we trust enough to try retrying (fetching original if thumb fails)
+    trustedHosts: [
+        'peklo.biz',
+        'opu.peklo.biz',
+        'flickr.com',
+        'static.flickr.com'
     ],
 
     init: function() {
@@ -212,6 +220,13 @@ window.Fotki.App = {
         return true;
     },
 
+    isTrustedHost: function(url) {
+        for (const host of this.trustedHosts) {
+            if (url.includes(host)) return true;
+        }
+        return false;
+    },
+
     upgradeUrl: function(url) {
         if (url.startsWith('http://')) {
             return url.replace('http://', 'https://');
@@ -232,6 +247,24 @@ window.Fotki.App = {
                     if (userCard) userCard.remove();
                 }
             }
+        }
+    },
+
+    recoverUserCard: function(user) {
+        if (this.viewState !== 'root') return;
+        
+        const photos = this.groupedData[user];
+        const card = Array.from(document.querySelectorAll('.fg-user-card')).find(el => el.dataset.user === user);
+        
+        if (!card) return;
+
+        if (!photos || photos.length === 0) {
+            card.remove(); 
+        } else {
+            const img = card.querySelector('img');
+            if (img) img.src = photos[0].thumb; 
+            const countEl = card.querySelector('.fg-user-count');
+            if (countEl) countEl.innerText = photos.length;
         }
     },
 
@@ -266,7 +299,6 @@ window.Fotki.App = {
         this.loadMore(true); 
     },
 
-    // ROBUST NEXT PAGE FINDER
     findNextPage: function(doc) {
         // 1. Try standard CSS selector
         let el = doc.querySelector('.pager .older a');
@@ -372,7 +404,14 @@ window.Fotki.App = {
                 const result = self.extractData(newDoc);
                 loadedPhotos += result.count;
                 pagesFetched++;
-                self.nextPageUrl = result.nextLink;
+                
+                let foundNext = result.nextLink;
+                // Double check for next link if extract failed to find it
+                if (!foundNext) {
+                    const fallbackEl = newDoc.querySelector('.pager .older a');
+                    if (fallbackEl) foundNext = fallbackEl.href;
+                }
+                self.nextPageUrl = foundNext;
 
                 if (!self.nextPageUrl) stopLoading = true;
                 if (self.dateLimitMin && result.count === 0 && pagesFetched > 1) {
@@ -380,7 +419,6 @@ window.Fotki.App = {
                      self.nextPageUrl = null; 
                 }
             }
-            
             self.refreshView();
 
         } catch (e) {
@@ -401,15 +439,11 @@ window.Fotki.App = {
                     freshBtn.textContent = 'Načíst starší';
                     freshBtn.disabled = false;
                 } else {
-                    // MANUAL RETRY BUTTON INSTEAD OF DISAPPEARING
-                    // If we genuinely hit the end, we show "End".
-                    // If we are confused, we let user click again.
-                    if (document.querySelector('.listing .item')) { // Just a sanity check if ANY posts exist
+                    if (document.querySelector('.listing .item')) {
                          freshBtn.textContent = 'Zkusit najít další (konec?)';
                          freshBtn.disabled = false;
                          freshBtn.style.display = 'inline-block';
                          freshBtn.onclick = () => { 
-                             // Force a manual attempt if user clicks
                              if (!self.nextPageUrl) console.log("Really no URL found.");
                              else self.loadMore(); 
                          };
@@ -508,7 +542,6 @@ window.Fotki.App = {
             const img = card.querySelector('img');
             const item = photos[0];
             
-            // SELF-HEALING & ZOMBIE KILLER
             let attempt = 0;
             const tryNext = () => {
                 attempt++;
@@ -519,20 +552,18 @@ window.Fotki.App = {
                 }
             };
 
-            // Kill stuck images after 5 seconds
-            const stuckTimer = setTimeout(() => {
-                if (!img.complete || img.naturalWidth === 0) {
-                    console.warn(`Fotki: Zombie timeout for ${user}`);
-                    card.remove();
-                }
-            }, 5000);
-
+            // FIX: Smart Fallback for Trusted Hosts (e.g. Lucifer's Opu)
             img.onerror = () => {
-                clearTimeout(stuckTimer);
-                tryNext();
+                if (this.isTrustedHost(item.src) && img.src !== item.src) {
+                    // It was a thumb failure on a trusted host. Try original!
+                    console.log(`Fotki: Thumb failed for ${user}, trying original.`);
+                    img.src = item.src;
+                } else {
+                    tryNext();
+                }
             };
+
             img.onload = () => {
-                clearTimeout(stuckTimer);
                 if (img.naturalWidth > 0 && img.naturalWidth < 50) tryNext();
             };
             
@@ -604,12 +635,22 @@ window.Fotki.App = {
                 this.pruneItem(item);
             };
 
-            // Kill stuck images
+            // Kill stuck images after 15s (Lucifer fix)
             const stuckTimer = setTimeout(() => {
                 if (!img.complete || img.naturalWidth === 0) handleFail();
-            }, 5000);
+            }, 15000);
 
-            img.onerror = () => { clearTimeout(stuckTimer); handleFail(); };
+            // FIX: Smart Fallback for Trusted Hosts
+            img.onerror = () => {
+                clearTimeout(stuckTimer);
+                if (this.isTrustedHost(item.src) && img.src !== item.src) {
+                    console.log(`Fotki: Grid Thumb failed, trying original: ${item.src}`);
+                    img.src = item.src;
+                } else {
+                    handleFail();
+                }
+            };
+
             img.onload = () => {
                 clearTimeout(stuckTimer);
                 if (img.naturalWidth > 0 && img.naturalWidth < 50) handleFail();
