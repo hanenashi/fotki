@@ -17,13 +17,22 @@ window.Fotki.App = {
     isFetching: false,
     dateLimitMin: null, 
 
-    // Configuration
+    // Configuration - The "No Fly" List
     deadHosts: [
         'tinypic.com',
         'fbcdn.net',
         'sklad.obrazku.cz',
-        'media.novinky.cz', // Often dead or http-only
-        'img.ihned.cz'      // Often breaks
+        'media.novinky.cz', 
+        'img.ihned.cz',
+        'fail.cz',
+        'flickr.com',
+        'static.flickr.com',
+        'images.paraorkut.com',
+        'imgup.eu',
+        'like.cz',
+        'rajce.idnes.cz',
+        'ukazto.com',
+        'q3.cz'
     ],
 
     init: function() {
@@ -220,40 +229,6 @@ window.Fotki.App = {
         return url;
     },
 
-    pruneItem: function(badItem) {
-        this.allItems = this.allItems.filter(i => i !== badItem);
-        if (this.groupedData[badItem.user]) {
-            this.groupedData[badItem.user] = this.groupedData[badItem.user].filter(i => i !== badItem);
-            
-            if (this.groupedData[badItem.user].length === 0) {
-                delete this.groupedData[badItem.user];
-                if (this.viewState === 'root') {
-                    const cards = Array.from(document.querySelectorAll('.fg-user-card'));
-                    const userCard = cards.find(el => el.dataset.user === badItem.user);
-                    if (userCard) userCard.remove();
-                }
-            }
-        }
-    },
-
-    recoverUserCard: function(user) {
-        if (this.viewState !== 'root') return;
-        
-        const photos = this.groupedData[user];
-        const card = Array.from(document.querySelectorAll('.fg-user-card')).find(el => el.dataset.user === user);
-        
-        if (!card) return;
-
-        if (!photos || photos.length === 0) {
-            card.remove(); 
-        } else {
-            const img = card.querySelector('img');
-            if (img) img.src = photos[0].thumb; 
-            const countEl = card.querySelector('.fg-user-count');
-            if (countEl) countEl.innerText = photos.length;
-        }
-    },
-
     resetData: function() {
         this.groupedData = {};
         this.allItems = [];
@@ -298,11 +273,11 @@ window.Fotki.App = {
             const timestamp = U.parseCzechDate(dateText);
 
             post.querySelectorAll('.content img').forEach(img => {
-                // Pre-filter: Check known bad hosts
+                // Pre-filter: Check known bad hosts to save bandwidth/console
                 if (this.isSafeUrl(img.src)) {
                     if (!img.hasAttribute('width') || img.width > 30) {
                         
-                        // Force HTTPS to avoid mixed content warnings
+                        // Force HTTPS to avoid mixed content
                         const safeSrc = this.upgradeUrl(img.src);
 
                         const item = {
@@ -480,17 +455,13 @@ window.Fotki.App = {
             `;
             
             const img = card.querySelector('img');
-            const item = photos[0];
             
+            // ROOT VIEW SAFETY: 
+            // If cover dies, DO NOT retry. Just show broken placeholder.
+            // This prevents the infinite loop of death.
             img.onerror = () => {
-                this.pruneItem(item); 
-                this.recoverUserCard(user); 
-            };
-            img.onload = () => {
-                if (img.naturalWidth > 0 && img.naturalWidth < 50) {
-                    this.pruneItem(item);
-                    this.recoverUserCard(user);
-                }
+                img.src = 'https://okoun.cz/images/icons/cross.gif';
+                img.style.opacity = 0.3;
             };
             
             target.appendChild(card);
@@ -558,7 +529,8 @@ window.Fotki.App = {
             const img = card.querySelector('img');
             const handleFail = () => {
                 card.remove(); 
-                this.pruneItem(item);
+                // Only clean data model, no UI refreshes here
+                this.allItems = this.allItems.filter(i => i !== item);
             };
 
             img.onerror = handleFail;
