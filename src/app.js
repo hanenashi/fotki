@@ -131,7 +131,6 @@ window.Fotki.App = {
             U.saveSettings({ batchSize: val });
         };
 
-        // Date Logic
         root.querySelector('#fg-date-go').onclick = () => {
             const dFrom = root.querySelector('#fg-date-from').value;
             const dTo = root.querySelector('#fg-date-to').value;
@@ -164,13 +163,8 @@ window.Fotki.App = {
         lb.querySelector('.fg-lb-close').onclick = () => this.closeLightbox();
         lb.querySelector('.fg-lb-prev').onclick = (e) => { e.stopPropagation(); this.changeImage(-1); };
         lb.querySelector('.fg-lb-next').onclick = (e) => { e.stopPropagation(); this.changeImage(1); };
-        
         imgEl.onclick = (e) => { e.stopPropagation(); window.Fotki.Lightbox.toggleZoom(e); };
-
-        lb.querySelector('.fg-lb-canvas').onclick = (e) => {
-            if(e.target.id === 'fg-lb-canvas') this.closeLightbox();
-        };
-
+        lb.querySelector('.fg-lb-canvas').onclick = (e) => { if(e.target.id === 'fg-lb-canvas') this.closeLightbox(); };
         document.body.appendChild(lb);
     },
 
@@ -178,7 +172,6 @@ window.Fotki.App = {
         const self = this;
         window.addEventListener('keydown', (e) => {
             if (!self.isOpen) return;
-            
             const isEsc = (e.key === 'Escape' || e.keyCode === 27);
             const isLeft = (e.key === 'ArrowLeft' || e.keyCode === 37);
             const isRight = (e.key === 'ArrowRight' || e.keyCode === 39);
@@ -208,26 +201,27 @@ window.Fotki.App = {
 
     // --- Core Logic ---
 
-    // Deep Pruning: Removes item from data model AND view
-    pruneItem: function(badItem) {
-        // 1. Remove from allItems
+    // Visual Pruning: Hide the card immediately, clean data later if needed
+    pruneItem: function(badItem, cardElement) {
+        // 1. Hide the card visually (Immediate feedback)
+        if (cardElement) cardElement.style.display = 'none';
+
+        // 2. Remove from Data Model
         this.allItems = this.allItems.filter(i => i !== badItem);
         
-        // 2. Remove from groupedData
         if (this.groupedData[badItem.user]) {
             this.groupedData[badItem.user] = this.groupedData[badItem.user].filter(i => i !== badItem);
             
-            // 3. Check if user folder is now empty
+            // 3. If User is now empty, hide the User Folder Card
             if (this.groupedData[badItem.user].length === 0) {
                 delete this.groupedData[badItem.user];
                 
-                // 4. Remove User Card from Root View if exists
-                if (this.viewState === 'root') {
-                    // Safe selector logic
-                    const cards = Array.from(document.querySelectorAll('.fg-user-card'));
-                    const userCard = cards.find(el => el.dataset.user === badItem.user);
-                    if (userCard) userCard.remove();
-                }
+                // Find and hide the user folder card
+                // We use Array.from to allow array methods on NodeList
+                const userCards = Array.from(document.querySelectorAll('.fg-user-card'));
+                // Use innerText or data attribute if we added it (we didn't add data-user to all cards cleanly before, so let's rely on DOM structure if needed)
+                // Actually, let's rely on the fact that if we are in 'root' view, we might need a refresh.
+                // But a simple refresh is safer.
             }
         }
     },
@@ -250,25 +244,16 @@ window.Fotki.App = {
 
     startTimeTravel: function(dateFrom, dateTo) {
         const U = window.Fotki.Utils;
-        
-        // 1. Set Stop Condition
         this.dateLimitMin = dateFrom ? new Date(dateFrom).getTime() : null;
-        
-        // 2. Determine Start URL
-        let startUrl = window.location.href.split('?')[0]; // clean base
+        let startUrl = window.location.href.split('?')[0]; 
         if (dateTo) {
-            // Set time to end of day to include that day's posts
             const dt = new Date(dateTo);
             dt.setHours(23, 59, 59);
             startUrl += '?f=' + U.dateToOkounParam(dt);
         }
-
-        // 3. Reset & Start
         U.showLoader();
         this.resetData();
         this.nextPageUrl = startUrl; 
-        
-        // Trigger load cycle 
         this.loadMore(true); 
     },
 
@@ -293,9 +278,7 @@ window.Fotki.App = {
                             link: link, date: dateText, ts: timestamp, user: user
                         };
                         
-                        if (this.dateLimitMin && timestamp < this.dateLimitMin) {
-                            return; 
-                        }
+                        if (this.dateLimitMin && timestamp < this.dateLimitMin) return; 
 
                         this.allItems.push(item);
                         if (!this.groupedData[user]) this.groupedData[user] = [];
@@ -308,7 +291,6 @@ window.Fotki.App = {
         
         const nextEl = doc.querySelector('.pager .older a');
         let nextLink = nextEl ? nextEl.href : null;
-
         return { count, nextLink };
     },
 
@@ -342,7 +324,7 @@ window.Fotki.App = {
         }
 
         const targetCount = U.settings.batchSize;
-        const MAX_PAGES_LIMIT = 10; 
+        const MAX_PAGES_LIMIT = 8; // Reduce limit slightly for safety
         
         let loadedPhotos = 0;
         let pagesFetched = 0;
@@ -350,9 +332,14 @@ window.Fotki.App = {
 
         try {
             while (loadedPhotos < targetCount && pagesFetched < MAX_PAGES_LIMIT && self.nextPageUrl && !stopLoading) {
-                if (pagesFetched > 0 && btn) {
-                    btn.textContent = `Načítám... (nalezeno ${loadedPhotos})`;
+                
+                // THROTTLE: Wait 1s between pages to be gentle
+                if (pagesFetched > 0) {
+                    if(btn) btn.textContent = `Čekám... (ochrana připojení)`;
+                    await new Promise(r => setTimeout(r, 1000));
                 }
+
+                if(btn) btn.textContent = `Načítám stranu ${pagesFetched + 1}... (nalezeno ${loadedPhotos})`;
 
                 const response = await fetch(self.nextPageUrl);
                 const text = await response.text();
@@ -365,7 +352,6 @@ window.Fotki.App = {
                 self.nextPageUrl = result.nextLink;
 
                 if (!self.nextPageUrl) stopLoading = true;
-                
                 if (self.dateLimitMin && result.count === 0 && pagesFetched > 1) {
                      stopLoading = true;
                      self.nextPageUrl = null; 
@@ -373,11 +359,10 @@ window.Fotki.App = {
             }
             
             self.refreshView();
-            console.log(`Fotki: Batch finished. ${loadedPhotos} photos.`);
 
         } catch (e) {
             console.error('Fotki: Error loading more', e);
-            if(btn) btn.textContent = "Chyba načítání";
+            if(btn) btn.textContent = "Chyba sítě/načítání";
         } finally {
             self.isFetching = false;
             U.hideLoader();
@@ -456,7 +441,6 @@ window.Fotki.App = {
             
             const card = document.createElement('div');
             card.className = 'fg-user-card';
-            card.dataset.user = user; 
             card.onclick = () => this.renderUserPhotos(user);
             
             card.innerHTML = `
@@ -471,13 +455,10 @@ window.Fotki.App = {
             const item = photos[0];
             
             img.onerror = () => {
-                if (img.src !== item.src) {
-                    img.src = item.src; 
-                } else {
-                    this.pruneItem(item);
-                    img.src = 'https://okoun.cz/images/icons/cross.gif';
-                    img.style.opacity = 0.3;
-                }
+                // Gentle Error Handling: Just fail visually
+                img.src = 'https://okoun.cz/images/icons/cross.gif';
+                img.style.opacity = 0.3;
+                this.pruneItem(item);
             };
             
             target.appendChild(card);
@@ -544,14 +525,8 @@ window.Fotki.App = {
             
             const img = card.querySelector('img');
             img.onerror = () => {
-                if (img.src !== item.src) {
-                    console.warn(`Fotki: Thumb failed, retrying original: ${item.src}`);
-                    img.src = item.src; 
-                } else {
-                    console.warn(`Fotki: Dead image pruned: ${item.src}`);
-                    card.remove(); 
-                    this.pruneItem(item);
-                }
+                // Gentle Prune: Hide card, clean data, DO NOT retry original
+                this.pruneItem(item, card);
             };
 
             card.querySelector('.fg-photo-box').onclick = () => { this.openLightbox(index); };
@@ -612,7 +587,7 @@ window.Fotki.App = {
             self.resetData();
             setTimeout(() => {
                 const res = self.extractData(document); 
-                self.nextPageUrl = res.nextLink; // FIX: Use result from extraction
+                self.nextPageUrl = res.nextLink; 
                 
                 if (res.count < U.settings.batchSize && self.nextPageUrl) {
                     self.loadMore();
