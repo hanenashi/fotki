@@ -18,11 +18,11 @@ window.Fotki.App = {
     isFetching: false,
     dateLimitMin: null, 
 
-    // Trusted for retry (Original resolution fallback)
+    // Trusted for retry
     trustedHosts: [
         'peklo.biz',
         'opu.peklo.biz',
-        'pic.peklo.biz', // Lucifer's custom domain
+        'pic.peklo.biz',
         'flickr.com',
         'static.flickr.com'
     ],
@@ -100,7 +100,7 @@ window.Fotki.App = {
                     </div>
                     <div class="fg-btn-row">
                         <button id="fg-date-go" class="fg-action-btn">Načíst období</button>
-                        <button id="fg-date-reset" class="fg-reset-btn" title="Zrušit filtr (zpět do současnosti)">✕</button>
+                        <button id="fg-date-reset" class="fg-reset-btn" title="Zpět do současnosti">Reset</button>
                     </div>
                 </div>
                 <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #333; text-align: right; color: #555; font-size: 10px;">
@@ -140,6 +140,7 @@ window.Fotki.App = {
             }
         };
 
+        // Basic Settings Events
         root.querySelector('#fg-opt-group').onchange = (e) => {
             U.saveSettings({ groupByUser: e.target.checked });
             this.forceRefresh();
@@ -303,7 +304,6 @@ window.Fotki.App = {
     },
     
     getOpuThumb: function(url) {
-        // Only valid for standard opu.peklo.biz/p/ uploads
         if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) {
             const parts = url.split('/');
             const filename = parts.pop();
@@ -333,7 +333,6 @@ window.Fotki.App = {
         document.getElementById('fg-date-from').value = '';
         document.getElementById('fg-date-to').value = '';
         
-        // Reset to base URL
         const startUrl = window.location.href.split('?')[0];
         
         U.showLoader();
@@ -357,6 +356,7 @@ window.Fotki.App = {
     extractData: function(doc) {
         const U = window.Fotki.Utils;
         let count = 0;
+        let stopSignal = false; // Flag to stop searching entirely
 
         doc.querySelectorAll('.listing .item').forEach(post => {
             const userEl = post.querySelector('.meta .user');
@@ -366,11 +366,17 @@ window.Fotki.App = {
             const dateText = linkEl ? linkEl.innerText.trim() : '';
             const timestamp = U.parseCzechDate(dateText);
 
+            // DATE LIMIT CHECK
+            // If post has a valid timestamp and is older than our "From" limit, stop.
+            if (this.dateLimitMin && timestamp > 0 && timestamp < this.dateLimitMin) {
+                stopSignal = true;
+                return; // Skip this item
+            }
+
             post.querySelectorAll('.content img').forEach(img => {
                 if (this.isSafeUrl(img.src)) {
                     if (!img.hasAttribute('width') || img.width > 30) {
                         const safeSrc = this.upgradeUrl(img.src);
-                        
                         if (this.seenUrls.has(safeSrc)) return; 
 
                         const item = {
@@ -379,8 +385,6 @@ window.Fotki.App = {
                             link: link, date: dateText, ts: timestamp, user: user
                         };
                         
-                        if (this.dateLimitMin && timestamp < this.dateLimitMin) return; 
-
                         this.seenUrls.add(safeSrc); 
                         this.allItems.push(item);
                         if (!this.groupedData[user]) this.groupedData[user] = [];
@@ -391,7 +395,7 @@ window.Fotki.App = {
             });
         });
         
-        return { count, nextLink: this.findNextPage(doc) };
+        return { count, nextLink: this.findNextPage(doc), stopSignal };
     },
 
     sortData: function() {
@@ -446,20 +450,23 @@ window.Fotki.App = {
                 }
 
                 const result = self.extractData(newDoc);
-                loadedPhotos += result.count;
-                pagesFetched++;
                 
-                let foundNext = result.nextLink;
-                if (!foundNext) {
-                    const fallbackEl = newDoc.querySelector('.pager .older a');
-                    if (fallbackEl) foundNext = fallbackEl.href;
-                }
-                self.nextPageUrl = foundNext;
+                // If extractData said "We passed the date limit", stop immediately.
+                if (result.stopSignal) {
+                    stopLoading = true;
+                    self.nextPageUrl = null; // Kill "More" button
+                } else {
+                    loadedPhotos += result.count;
+                    pagesFetched++;
+                    
+                    let foundNext = result.nextLink;
+                    if (!foundNext) {
+                        const fallbackEl = newDoc.querySelector('.pager .older a');
+                        if (fallbackEl) foundNext = fallbackEl.href;
+                    }
+                    self.nextPageUrl = foundNext;
 
-                if (!self.nextPageUrl) stopLoading = true;
-                if (self.dateLimitMin && result.count === 0 && pagesFetched > 1) {
-                     stopLoading = true;
-                     self.nextPageUrl = null; 
+                    if (!self.nextPageUrl) stopLoading = true;
                 }
             }
             self.refreshView();

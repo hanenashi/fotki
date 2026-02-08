@@ -38,28 +38,43 @@ window.Fotki.styles = `
 
     /* Settings Panel */
     #fg-settings-panel {
-        position: absolute; top: 50px; right: 15px; width: 280px;
+        position: absolute; top: 50px; right: 15px; width: 300px;
         background: #222; border: 1px solid #444; border-radius: 4px;
         padding: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
         display: none; z-index: 100;
+        max-height: 90vh; overflow-y: auto;
     }
     #fg-settings-panel.active { display: block; }
     .fg-setting-row { margin-bottom: 15px; }
     .fg-setting-row label { display: block; color: #aaa; margin-bottom: 5px; font-size: 12px; }
-    .fg-setting-row select, .fg-setting-row input {
+    .fg-setting-row select, .fg-setting-row input[type="number"], .fg-setting-row input[type="date"] {
         background: #111; border: 1px solid #444; color: #eee;
         padding: 5px; width: 100%; border-radius: 3px; box-sizing: border-box;
+    }
+    .fg-setting-row textarea {
+        background: #111; border: 1px solid #444; color: #999;
+        padding: 5px; width: 100%; height: 80px; border-radius: 3px;
+        box-sizing: border-box; font-family: monospace; font-size: 11px;
+        resize: vertical;
     }
     .fg-checkbox-row { display: flex; align-items: center; justify-content: space-between; }
     .fg-checkbox-row input { width: auto; }
     
     .fg-date-group { display: flex; gap: 10px; }
-    .fg-date-group input { width: 100%; font-size: 11px; }
+    
+    .fg-btn-row { display: flex; gap: 10px; margin-top: 5px; }
+    
     .fg-action-btn { 
-        width: 100%; padding: 8px; background: #d35400; color: white; border: none; 
-        cursor: pointer; border-radius: 3px; margin-top: 5px; font-weight: bold;
+        flex: 2; padding: 8px; background: #d35400; color: white; border: none; 
+        cursor: pointer; border-radius: 3px; font-weight: bold;
     }
     .fg-action-btn:hover { background: #e67e22; }
+    
+    .fg-reset-btn {
+        flex: 1; padding: 8px; background: #c0392b; color: white; border: none;
+        cursor: pointer; border-radius: 3px; font-weight: bold;
+    }
+    .fg-reset-btn:hover { background: #e74c3c; }
 
     /* Loader */
     #fg-loader {
