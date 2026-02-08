@@ -1,0 +1,648 @@
+
+/* fonts */
+
+h2, .ctx h3, .index h3,
+.expbutton .hd,
+.ad .label {
+	font-family: Georgia, serif;
+}
+
+.head .menu a,
+h1 a,
+h2 a,
+h3 a {
+	text-decoration: none;
+}
+
+body {
+	font-family: Verdana,"Bitstream Vera Sans",Arial,sans-serif;
+}
+
+/* TODO - replace with .sys or stlt */
+.head h1 {
+	font-family: "Lucida Sans",Verdana,"Bitstream Vera Sans",Arial,sans-serif;
+}
+
+.content,
+.item .meta,
+body.userlist .main .main,
+body.boardlist .main .main {
+	font-size: 109%;
+}
+
+.board .main .expbutton .hd { 
+	width: 7em;
+	font-weight: bold;
+}
+
+.item .info {
+	margin-left: -8px;	
+}
+
+.item .info,
+.confirm {
+	margin-top: 0.5em;	
+}
+
+
+.item .info span.loading,
+.confirm {
+	font-size: 13px;
+}
+
+.confirm {
+	padding: 0.5em 0.5em 0.5em 0.8em;
+	margin-left: -0.5em;
+	margin-right: 1em;
+}
+
+.confirm .item {
+	padding: 0;
+	border: 0;	
+}
+
+.info span.loading {
+	background-image: url(../img/ajaxing.gif);
+	background-repeat: no-repeat;
+	background-position: 4px 4px;
+	padding: 0.5em;
+	padding-left: 25px;
+	font-weight: bold;
+	color: #003399;
+	z-index: 100;
+	border-top: 1px solid #AFC2DA;
+	background-color: #EEF2F7;
+}
+
+.item .content .info span.loading {
+	margin-left: -10px;	
+}
+
+/* colors */
+
+body,
+.item.hover .actions span.prev {
+	color: black;
+}
+	
+body {
+	background-color: #80AAFF;
+}
+
+#body {
+	background-color: #DFEAFF;
+}
+
+a, h2 a:visited {
+	color: #003399;
+}
+
+a:visited {
+	color: #993366;
+}
+
+.head {
+	border-bottom: 1px solid #CCCCCC;	
+}
+
+.head .menu, .board .main .settings {
+	font-size: 93%;	
+}
+
+.footer {
+	border-top: 1px solid #CCCCCC;
+}
+
+.messages {
+	margin-bottom: 1em;	
+}
+
+.messages .content {
+	padding: 0.5em; 	
+}
+
+#sysmsgBox.messages,
+.sysmsgBox.messages {
+	background-color: #E7EFE4; /* TODO */
+	border: 2px solid #639757; /* TODO */
+}
+
+#errorBox.messages,
+.errorsBox.messages {
+	background-color: #F7E3E9; /* TODO */
+	border: 2px solid #BD3759; /* TODO */
+}
+
+#errorBox .bad_html,
+.errorsBox .bad_html {
+	background-color: #E7EEF4; /* TODO */
+	font-weight: bold;
+}
+
+#errorBox code,
+.errorBox code {
+	background-color: #FFFFFF; 
+	color: #102541; /* TODO */
+	padding: 0.2em;
+	line-height: 120%;
+}
+
+#infosBox.messages,
+.infosBox.messages {
+	background-color: #EFF4FF; /* TODO */
+	border: 2px solid #80AAFF; /* TODO */
+}
+
+
+.msgExplanation {
+	background-color: #FFFFFF;
+	padding: 0.5em; 
+}
+
+.head .menu a,
+.head .menu a:visited,
+.head .user a,
+.head .user a:visited,
+.footer a,
+.footer a:visited,
+.item.hover .actions a,
+.item.hover .actions span.prev a.prev {
+	color: #B85F00;
+}
+
+a:hover,
+.head h1 a:hover,
+.head .menu a:hover,
+.head .user a:hover {
+	color: #FF6600;
+}
+
+.head .menu .new a {
+	background-color: #B85F00;
+	color: #FFFFFF;
+	font-weight: bold;
+	padding: 2px 6px 2px 6px;
+	margin: 0 -6px -2px 0;
+}
+
+.settings a,
+.settings a:visited {
+	color: #B85F00;
+	font-weight: bold;
+}
+
+.settings {
+	color: #B85F00;
+}
+
+.ctx img.ico {
+	max-width: 13px;
+	max-height: 13px;
+	margin-right: 3px;
+}
+
+.welcome,
+.item .content .confirm.reply {
+	background-color: #FFFFFF;
+	border: 1px dotted #CCCCCC;
+}
+
+/* simple components */
+
+.user.ico,
+.user .ico {
+	border: 1px dotted #CCCCCC;
+	background-color: #FFFBF7;
+}
+
+/* pager */
+
+.pager ul {
+	font-size: smaller;
+	white-space: normal;
+}
+
+.pager ul li {
+	background-color: #CCCCCC;
+}
+
+.pager ul li.newest,
+.pager ul li.newer,
+.pager ul li.older,
+.pager ul li.oldest {
+	background-color: #FFFBF7;
+	background-image: url(../img/pager-sprites.png);
+	background-repeat: no-repeat;
+	margin: 0;
+}
+
+.pager ul li.curr {
+	font-weight: bold;
+	padding: 2px 8px 2px 8px;
+	background-color: #FFFFFF;
+	border: 1px solid #333333;
+}
+
+.pager ul li.newest {
+	background-position: 0px -2px;
+}
+
+.pager ul li.newer {
+	background-position: 0 -52px;
+}
+
+.pager ul li.older {
+	background-position: right -102px;
+}
+
+.pager ul li.oldest {
+	background-position: right -152px;
+}
+
+/* item */
+	
+
+.legend {
+	border-top: 1px dotted #CCCCCC;
+	background-color: #F7F7F7;
+}
+
+.item .title {
+	font-weight: bold;
+	margin-bottom: 0.2em;
+}
+
+.item .user.anon {
+	font-style: italic;
+}
+
+.item .date,
+.item .permalink a,
+.item .meta a {
+	color: #666633;
+	text-decoration: none;
+}
+
+.item .permalink a:hover {
+	text-decoration: underline;	
+}
+
+.item.old {
+	color: #262626; /* TODO */
+}
+
+.articles {
+	border-top: 1px solid #CCCCCC;	
+}
+
+.room .item {
+	border-bottom: 2px solid #CCCCCC;	
+}
+
+.room .item.new {
+	background-color: #FFFFFF;
+	border-left: 2px solid #80AAFF;
+	border-right: 2px solid #80AAFF;
+	border-bottom: 2px solid #80AAFF;
+}
+
+.room .item.new.o-first {
+	border-top: 2px solid #80AAFF;
+}
+
+.item .actions a, .item .actions .reply a:visited {
+	color: #B85F00;
+}
+
+.room .item.hilited {
+	margin-left: -10px;
+	padding-left: 10px;
+	border: 3px solid #B85F00;
+}
+
+.expbutton .hd {
+	border: 1px solid #B85F00;
+	background-color: #B85F00;
+}
+	
+.expbutton .hd a {
+	color: #FFFFFF;
+	font-weight: bold;
+	text-decoration: none;
+}
+
+.item .actions.replyForm a.reply,
+.expbutton .post.content,
+.actions.replyForm .post.content {
+	background-color: #FFC180;
+	border: 1px solid #B85F00;
+}
+
+.item .actions.replyForm a.reply {
+	margin-bottom: -2px;
+	border-bottom: 2px solid #FFC180;
+}
+
+.item .actions.replyForm {
+	opacity: 0.5;
+}
+
+.item.selected .actions.replyForm {
+	opacity: 1;
+}
+
+.preview {
+	text-align: left;	
+}
+
+.preview .item {
+	background-color: #FFF0DF;	
+}
+
+.post.content .preview {
+	margin: 7px 7px 0 7px;	
+}
+
+/* h1 + logo */
+
+.head h1 {
+	height: 3.5em;
+	float: left;
+}
+
+.head h1 a {
+	background-image: url(../img/fish-amber-l.png);
+	background-repeat: no-repeat;
+	background-position: 0 20px;
+	padding-left: 2px;	
+	padding-right: 30px;
+	padding-bottom: 27px;
+}
+
+.head h1 a:hover {
+	background-position: 0 -175px;	
+}
+
+/* form controls */
+
+input.prompt, textarea.prompt {
+	color: #666666;
+	font-style: italic;
+}
+
+.search input.text,
+.board .main .search input.text.authors {
+	width: 10em;	
+}
+
+.board .main .search input.text {
+	width: 14em;	
+}
+
+/* YUI buttons */
+
+.yui-skin-sam.gecko .yui-button { /* gecko (mozilla, firefox) fix */
+	margin-bottom: -1px;	
+}
+
+.yui-skin-sam.opera .yui-button button { /* opera fix */
+	padding-top: 3px;
+}
+
+.yui-skin-sam .yui-button button {
+	min-height: 1.5em;
+	line-height: 1;
+}
+
+.yui-skin-sam .post .yui-button {
+	margin-left: 5px;	
+}
+
+.yui-skin-sam .post .default button {
+	font-weight: bold;	
+}
+
+/* ad label */
+
+.ad .label, .preview .label {
+	color: #999999;
+	border: 1px solid #999999;
+	border-bottom: none;
+	font-size: 73%;
+	font-weight: bold;
+	background-color: #F7F7F7;
+	padding: 2px 5px 2px 2px;
+	margin-left: 0.2em;
+}
+
+.head h1 a {
+	color: #666666;
+	display: block;
+}
+
+h2, h3, h4, body.form input.text.name  {
+	color: #333333;
+	font-weight: bold;	
+}
+
+/* item */
+
+.item a.link {
+	padding-left: 16px;
+	background-image: url(../img/link.png);
+	background-position: 0 4px;	
+	background-repeat: no-repeat;
+}
+
+/* item actions */
+
+.item .actions span.prev,
+.item .actions.replyForm span.prev {
+	margin-right: 1em;
+	color: #999999;
+}
+
+.item .actions.replyForm a,
+.item .actions.replyForm span.prev a.prev,
+.item .actions a,
+.item .actions span.prev a.prev {
+	color: #9CA3B3;
+}
+		
+.item .actions a,
+.item .actions span.prev a.prev {
+	padding-left: 16px;
+	margin-right: 0.4em;
+	background-image: url(../img/actions-sprites.png);
+	background-position: 0 -31px;			
+	background-repeat: no-repeat;
+}
+
+.item .actions .reply {
+	font-weight: bold;	
+}
+
+.item .actions .reply,
+.item .actions .remove,
+.item .actions.replyForm .post {
+	padding-right: 10px;
+	text-decoration: none;
+}
+
+.item .actions .reply,
+.item .actions .remove,
+.item .actions.replyForm .post {
+	margin-left: -8px;
+	padding-left: 26px;
+}
+
+.item .actions.replyForm .post {
+	padding-left: 5px;
+}
+
+.item .actions .reply {
+	background-position: 10px 2px;
+}
+
+.item .actions .remove {
+	background-position: 10px -97px;
+}
+
+.item .actions span.prev a {
+	margin-left: 0.2em;
+	margin-right: 0.5em;
+}
+
+.item .actions .thread {
+	background-position: 0 -64px;
+}
+
+.item .actions .share a {
+	padding-left: 18px;
+	margin-right: 0;
+	background-image: none;
+}
+
+.item.hover .actions .share a {
+	background-image: url(../img/fb-f-logo-14x14-blue.png);
+	background-position: 0 1px;			
+	background-repeat: no-repeat;
+	display: block;
+}
+
+.item .actions .share:after {
+  content: " ";
+  z-index: 10;
+  display: block;
+  position: absolute;
+  height: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(223, 234, 255, 0.8);
+}
+
+.item .article-detail .actions .share:after,
+.item.new .actions .share:after {
+  background: rgba(255, 255, 255, 0.8);	
+}
+
+.item.hover .actions .share:after {
+	z-index: -10;
+}
+
+/* homepage */
+
+.index .item .meta {
+	border-top: 0;
+	background-color: transparent;
+}
+
+.index .news .yui-g.first .yui-u {
+	background-color: #FFFFFF;	
+}
+
+.index .main .explore {
+	padding-top: 1em;	
+}
+
+.index .news .yui-g.first .explore .yui-u,
+.index .news .yui-g.first .explore .yui-u * {
+	background-color: transparent;
+}
+
+/* settings frms */
+
+body.form .new {
+	margin-left: -10px;
+	padding-left: 10px;
+	border-left: 1px solid 	#F89430;
+}
+
+body.form input.text.name {
+	font-size: 123.1%;
+	font-weight: bold;	
+}
+
+/* boardlist */
+
+.boardlist h3 {
+	font-size: 123.1%;
+}
+
+/* taken from YUI's CSS Foundation */
+/* TODO update font size percentages */
+.content h1 {
+        /*18px via YUI Fonts CSS foundation*/
+        font-size:138.5%;
+}
+.content h2 {
+        /*16px via YUI Fonts CSS foundation*/
+        font-size:123.1%;
+}
+.content h3 {
+        /*14px via YUI Fonts CSS foundation*/
+        font-size:108%;
+}
+.content h1 .content h2 .content h3 {
+        /* top & bottom margin based on font size */
+        margin:1em 0;
+}
+.content h1, .content h2, .content h3, .content h4, .content h5, .content h6, .content strong {
+        /*bringing boldness back to headers and the strong element*/
+        font-weight:bold;
+}
+.content abbr, .content acronym {
+        /*indicating to users that more info is available */
+        border-bottom:1px dotted #000;
+        cursor:help;
+}
+.content em {
+        /*bringing italics back to the em element*/
+        font-style:italic;
+}
+.content blockquote {
+        /*giving blockquotes and lists room to breath*/
+        margin:1em;
+}
+.content th, .content td {
+        /*borders and padding to make the table readable*/
+        border:1px solid #000;
+        padding:.5em;
+}
+.content th {
+        /*distinguishing table headers from data cells*/
+        font-weight:bold;
+        text-align:center;
+}
+.content caption {
+        /*coordinated marking to match cell's padding*/
+        margin-bottom:.5em;
+        /*centered so it doesn't blend in to other content*/
+        text-align:center;
+}
+.content p, .content fieldset, .content table {
+        /*so things don't run into each other*/
+        margin-bottom:1em;
+}
+

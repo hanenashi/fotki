@@ -1,0 +1,145 @@
+/* Markdown styling for Okoun.cz - Matches React Lexical editor styling */
+
+/* PrismJS 1.30.0
+https://prismjs.com/download.html#themes=prism&languages=markup+css+clike+javascript+actionscript+ada+bash+basic+brainfuck+c+csharp+cpp+css-extras+erlang+git+go+java+javadoclike+jsdoc+json+kotlin+lisp+lua+makefile+markup-templating+nasm+pascal+perl+php+python+r+jsx+tsx+ruby+rust+smalltalk+sql+typescript+visual-basic+yaml */
+code[class*=language-],pre[class*=language-]{color:#000;background:0 0;text-shadow:0 1px #fff;font-family:Consolas,Monaco,'Andale Mono','Ubuntu Mono',monospace;font-size:1em;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.5;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}code[class*=language-] ::-moz-selection,code[class*=language-]::-moz-selection,pre[class*=language-] ::-moz-selection,pre[class*=language-]::-moz-selection{text-shadow:none;background:#b3d4fc}code[class*=language-] ::selection,code[class*=language-]::selection,pre[class*=language-] ::selection,pre[class*=language-]::selection{text-shadow:none;background:#b3d4fc}@media print{code[class*=language-],pre[class*=language-]{text-shadow:none}}pre[class*=language-]{padding:1em;margin:.5em 0;overflow:auto}:not(pre)>code[class*=language-],pre[class*=language-]{background:#f5f2f0}:not(pre)>code[class*=language-]{padding:.1em;border-radius:.3em;white-space:normal}.token.cdata,.token.comment,.token.doctype,.token.prolog{color:#708090}.token.punctuation{color:#999}.token.namespace{opacity:.7}.token.boolean,.token.constant,.token.deleted,.token.number,.token.property,.token.symbol,.token.tag{color:#905}.token.attr-name,.token.builtin,.token.char,.token.inserted,.token.selector,.token.string{color:#690}.language-css .token.string,.style .token.string,.token.entity,.token.operator,.token.url{color:#9a6e3a;}.token.atrule,.token.attr-value,.token.keyword{color:#07a}.token.class-name,.token.function{color:#dd4a68}.token.important,.token.regex,.token.variable{color:#e90}.token.bold,.token.important{font-weight:700}.token.italic{font-style:italic}.token.entity{cursor:help}
+
+/* Use a more specific selector to override other styles */
+.item .content pre.markdown-code,
+.welcome pre.markdown-code,
+body pre.markdown-code {
+  /* Core code block styling */
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important;
+  line-height: 1.53 !important;
+  font-size: 13px !important;
+  
+  /* Box model */
+  display: block !important;
+  padding: 8px 8px 8px 52px !important;
+  margin: 8px 0 !important;
+  
+  /* Positioning and layout */
+  position: relative !important;
+  white-space: pre !important;
+  overflow-x: auto !important;
+  border-radius: 4px !important;
+  border: none !important;
+  tab-size: 2 !important;
+}
+
+/* Specify the code element inside our code block */
+.item .content pre.markdown-code code,
+.welcome pre.markdown-code code,
+body pre.markdown-code code {
+  font-family: inherit !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: inherit !important;
+  white-space: inherit !important;
+  display: block !important;
+  border: none !important;
+}
+
+/* Line numbers gutter with a single, targeted selector */
+.item .content pre.markdown-code:before,
+.welcome pre.markdown-code:before,
+body pre.markdown-code:before {
+  content: attr(data-gutter) !important;
+  display: block !important;
+  position: absolute !important;
+  background-color: #eee !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  border-right: 1px solid #ccc !important;
+  padding: 8px !important;
+  color: #777 !important;
+  white-space: pre !important;
+  text-align: right !important;
+  min-width: 25px !important;
+  line-height: 1.53 !important;
+  font-size: 13px !important;
+}
+
+/* Language indicator with a single, targeted selector */
+.item .content pre.markdown-code:after,
+.welcome pre.markdown-code:after,
+body pre.markdown-code:after {
+  content: attr(data-highlight-language) !important;
+  display: block !important;
+  position: absolute !important;
+  top: 2px !important;
+  right: 5px !important;
+  padding: 3px !important;
+  font-size: 10px !important;
+  text-transform: uppercase !important;
+  color: rgba(0, 0, 0, 0.5) !important;
+  z-index: 10 !important;
+}
+
+/* PrismJS token colors - exactly matching React Lexical editor */
+.token.comment,
+.editor-tokenComment {
+  color: slategray !important;
+}
+
+.token.punctuation,
+.editor-tokenPunctuation {
+  color: #999 !important;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.editor-tokenProperty {
+  color: #905 !important;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.editor-tokenSelector {
+  color: #690 !important;
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string,
+.editor-tokenOperator {
+  color: #9a6e3a !important;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword,
+.editor-tokenAttr {
+  color: #07a !important;
+}
+
+.token.function,
+.token.class-name,
+.editor-tokenFunction {
+  color: #dd4a68 !important;
+}
+
+.token.regex,
+.token.important,
+.token.variable,
+.editor-tokenVariable {
+  color: #e90 !important;
+}
+
+/* Override any legacy .code class that might affect our styles */
+.code {
+  font-family: inherit;
+  line-height: inherit;
+}

@@ -1,0 +1,136 @@
+body, .reset-f {
+	text-align: left;
+	line-height: 1.5;
+	font-size: 15px;
+	*font-size:small; /* for IE */
+	*font:x-small; /* for IE in quirks mode */
+	margin: 0;
+}
+
+body {
+	padding: 0.5em 3% 0.5em 3%;
+	min-width: 700px;
+}
+
+#body {
+	padding: 0.5em 22px;
+	margin: -0.5em -22px;
+}
+
+.head {
+	padding-bottom: 0.2em;
+	margin-bottom: 0.5em;
+	margin-top: 0.5em;
+}
+
+.head .nav {
+	float: left;
+}
+
+.item, .welcome {
+	margin-bottom: 1em;
+}
+
+h2 {
+	margin-bottom: 0.2em;
+}
+
+legend, .legend {
+	margin-top: 0.2em;
+	margin-bottom: 0.5em;
+}
+
+.welcome {
+	padding: 0.2em 0.5em 0.2em 0.5em;
+}
+
+.pager, .articles {
+	margin-top: 0.5em;
+}
+
+.head .menu {
+	margin-left: 9em;
+}
+
+.head .menu form {
+	margin-bottom: 0.6em;
+}
+
+.head .menu span, .item .actions a {
+	margin-right: 1em;
+}
+
+.head .user {
+	text-align: right;
+}
+
+h1, h2, h3 {
+	font-weight: bold;
+}
+
+h2  {
+	font-size: 161.6%;
+}
+
+/* user header */
+
+.user img {
+	max-height: 25px;
+	max-width: 25px;
+	vertical-align: top;
+}
+
+.user b, .head .user a {
+	margin-right: 3px;
+	padding-left: 3px;
+}
+
+/* contextual box */
+
+.ctx h3 {
+	display: inline;
+}
+
+.settings {
+	text-align: right;
+	padding-right: 0.5em;
+}
+
+p {
+	margin-bottom: 0.5em;
+}
+
+.main {
+	clear: left;
+}
+
+.main .ctx {
+	width: 25%;
+}
+
+.main .main {
+	width: 73%;
+}
+
+.footer {
+	text-align: right;
+	padding-top: 0.2em;
+	margin-top: 0.5em;
+	clear: both;
+}
+
+.footer a {
+	margin-left: 2em;
+}
+
+/* board */
+
+.room .main .search {
+	float: right;
+}
+
+/* form */
+
+fieldset .yui-u {
+	margin-bottom: 0.2em;
+}

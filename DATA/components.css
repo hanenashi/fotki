@@ -1,0 +1,746 @@
+/* simple stuff */
+
+.nobr {
+	white-space: nowrap;	
+}
+
+.clr-l {
+	clear: left;
+}
+
+.clr-r {
+	clear: right;
+}
+
+.clr-b {
+	clear: both;
+}
+
+img {
+	-ms-interpolation-mode: bicubic;
+}
+
+.user.ico,
+.user .ico,
+.item .replyForm .post.content .user.ico,
+.item .replyForm .post.content .user .ico {
+	width: 50px;
+	height: 50px;
+	overflow: hidden;
+	text-align: center;
+	margin: 7px 7px 7px 7px;	
+}
+
+.ico.user img {
+	max-width: 50px;
+	max-height: 50px;
+}
+
+input.text.long {
+	width: 100%;
+}
+
+input.text {
+	width: 37%;
+}
+
+select.align {
+	min-width: 37%;
+}
+
+input.text.short {
+	width: 5em;
+	min-width: 5em;
+}
+
+textarea {
+	padding: 2px;
+	min-width: 15em;
+	width: 100%;
+	height: 15em;	
+}
+
+.yui-button.top {
+	float: right;
+	margin-top: 0.5em;
+}
+
+/* bookmark */
+
+.room .main {
+	position: relative;
+}
+
+.board .main .bmk {
+	position: absolute;
+	top: 0.67em;
+	left: -18px;
+}
+
+.board .bmk,
+.board .bmk a,
+.board .bmk a input {
+	float: left;
+	width: 13px;
+	height: 14px;
+}
+
+.board .bmk a {
+	background-image: url(../img/star-states.png);
+	background-repeat: no-repeat;
+	text-decoration: none;
+}
+
+.board .bmk a.off {
+	background-position: 0px 0px;
+}
+
+.board .bmk a.on {
+	background-position: 0px -28px;
+}
+
+.board .bmk a.off:hover {
+	background-position: 0px -14px;
+}
+
+.board .bmk a.on:hover {
+	background-position: 0px -42px;
+}
+
+.board .bmk input {
+	display: none;
+}
+
+.board .bmk,
+.board .bmk a,
+.board .bmk a input {
+	padding: 0;
+	margin: 0;
+}
+
+/* expansion/collapse */
+
+.col .content {
+	display: none;	
+}
+
+.expcol a {
+	width: 100%;
+}
+
+.expcol .ico {
+	position: absolute;
+	display: block;
+	width: 16px;
+	height: 16px;
+	left: -18px;
+	background-image: url(../../../../css/yui-2.6.0/assets/skins/sam/sprite.png);
+	background-repeat: no-repeat;
+}
+
+.exp .ico {
+	background-position: 0 -399px;
+}
+
+.col .ico {
+	background-position: 0 -349px;
+}
+
+.board .welcome .expcol:hover {
+	cursor: pointer;	
+}
+
+.board .welcome .expcol * {
+	visibility: hidden;
+}
+
+.board .col.welcome .content {
+	height: 1.2em;
+	display: block;
+	overflow: hidden;
+}
+
+.board .col.welcome .content * {
+	display: inline;
+	font-size: inherit; 
+}
+
+.board .col.welcome .content br,
+.board .col.welcome .content img {
+	display: none;
+}
+
+.board .exp.welcome .elipsis {
+	display: none;	
+}
+
+.board .main .main .col.welcome .elipsis.actions {
+	display: block;
+	float: right;
+	visibility: visible;
+}
+
+.expbutton {
+	clear: left;
+	margin-bottom: 1.1em;
+}
+
+.expbutton .hd {
+	float: left;
+	text-align: center;	
+}
+
+.expbutton .hd a {
+	padding: 0.2em 1em 0.2em 1em;
+	display: block;
+}
+
+.expbutton .post.content {
+	clear: left;	
+}
+
+.post.content form,
+.post.content .form {
+	padding-left: 67px;
+	padding-right: 14px;
+}
+
+.msgbox .post.content form,
+.msgbox .post.content .form {
+	padding-left: 14px;
+}
+
+.msgbox .post.content .yui-g {
+	width: 100%;	
+}
+
+.msgbox .post.content .yui-g .yui-u.first { /* labels */
+	width: 15%;	
+	min-width: 5em;
+	text-align: right;	
+	padding-top: 0.5em;
+}
+
+.msgbox .post.content .yui-g .yui-u {
+	width: 83%;	
+}
+
+.post.content .ico {
+	float: left;
+}
+
+.post.content .ico img {
+	max-width: 50px;
+	max-height: 50px;		
+}
+	
+.post.content textarea,
+.post.content input.text {
+ 
+	margin: 0.5em 0.5em 0 0;
+}
+
+/*
+.board .post.content input.text {
+	display: none;	
+}
+*/
+
+.exp.title .post.content input.text {
+	display: block;	
+}
+
+.exp.title .actions.title {
+	display: none;	
+}
+
+.post.content .tools {
+	text-align: right;
+	margin: 7px 0 7px 0;
+}
+
+.post.content .tools select {
+	float: left;
+}
+
+.room .main .main .exp .search {
+	display: none;	
+}
+
+.board .main .main .col .actions {
+	visibility: hidden;
+}
+
+.main .actions {
+	text-align: left;
+	font-weight: normal;
+	padding-top: 0.2em;
+	position: relative;
+}
+
+.main .actions a {
+	margin-left: 0.2em;
+}
+
+.main .actions .share {
+	position: absolute;
+	top: 2px;
+	right: 1em;
+}
+
+/* pager */
+
+.list-and-pagers-wrapper {
+	position: relative;
+	margin-top: 1.2em;
+}
+
+.pager-top {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	right: 75px;
+}
+
+.pager ul {
+	display: inline;
+	margin: 5px 0 5px 0;
+	padding: 0;	
+}
+
+.pager ul li {
+	margin-left: 0;
+	padding: 2px 0 2px 0;
+	list-style: none;
+	display: inline;	
+}
+
+.pager ul li a {
+	padding: 2px 8px 2px 8px;
+	margin: 0;
+}
+
+.pager ul li.newest,
+.pager ul li.newer {
+	padding: 2px 4px 2px 16px;
+	margin: 0;
+}
+
+.pager ul li.older,
+.pager ul li.oldest {
+	padding: 2px 16px 2px 4px;
+	margin: 0;
+}
+
+.pager ul li.newest a,
+.pager ul li.newer a,
+.pager ul li.older a,
+.pager ul li.oldest a {
+	padding: 0;
+}
+
+
+/* item */
+
+.listing {
+	clear: left;
+	width: 138%;
+	position: relative;	
+}
+
+.listing .yui-button.delete {
+	float: right;
+	right: 0;
+	top: 0.5em;
+}
+
+.listing.thin,
+#hasad-bs.true .listing,
+#hasad-ss.true .listing {
+	width: 100%;
+}
+
+.ad {
+	display: none;	
+}
+
+.item {
+	clear: left;
+	*min-height: 0;
+}	
+
+.listing  .item {
+	position: relative;
+	padding-top: 0.75em;
+	padding-bottom: 0.5em;
+	margin: 0;
+}
+
+.item .ico {
+	float: left;
+	margin-left: 0;
+	margin-top: 3px;
+}
+
+.item .meta {
+	position: relative;
+	margin-bottom: 0.5em;
+	padding-left: 0.5em;
+	padding-right: 14em;
+}
+
+.item .meta .descr {
+	margin-left: 1em;
+}
+
+.item .meta .descr,
+.item .meta a,
+.item .meta .date,
+.item .meta .delete {
+	vertical-align: top;
+	white-space: nowrap;
+}
+
+.item .meta .descr,
+.item .meta .hpdescr,
+.item .meta .permalink {
+	font-size: 77%;
+}
+
+.item .meta .delete,
+.item .actions {
+	font-size: 85%;	
+}
+
+.item .delete label {
+	display: none;	
+}
+
+.item .meta {
+	margin-left: 64px;
+	padding-left: 0;	
+}
+
+.item .content,
+.item .title {
+	padding-left: 64px;	
+}
+
+.item .content {
+	margin-bottom: 0.5em;	
+}
+
+.item .content p {
+	padding-top: 0.6em;	
+}
+
+.item .actions {
+	margin-left: 64px;
+	clear: left;
+	border-top: 1px solid #C0D4FF;
+}
+
+.item.new .actions {
+	border-top: 1px solid #E0E0E0;
+}
+
+.item .content,
+.item .actions {
+	border: 1px solid inherit;
+}
+
+.item .meta .user {
+	font-weight: bold;
+	min-width: 5em;
+	text-align: left;
+}
+
+.item .meta .descr {
+	padding: 0 0 0 0.5em;
+}
+
+.item.new .meta .new {
+	display: none;	
+}
+
+.item .meta .delete {
+	position: absolute;
+	right: 0.2em;
+}
+
+.item .meta .permalink {
+	position: absolute;
+	top: 0;
+	right: 2.2em;
+}
+
+.item .actions {
+	margin-top: 0.5em;
+}
+
+.item .actions .first {
+	text-align: left;
+}
+
+/* reply form */
+
+.item .actions .post {
+	display: none;
+}
+
+.item .actions.replyForm .post {
+	display: block;
+	font-size: 13px;
+	padding-bottom: 5px;
+}
+
+.item .actions.replyForm a.reply {
+	color: inherit;
+	margin-top: -5px;
+	padding-top: 5px;
+	background-position: 10px 7px;
+}
+
+/* index - misc boxes */
+
+.index .main .item,
+.index .main .explore ul.top {
+	padding-left: 0.5em;	
+}
+
+.index h3 {
+	margin-top: 0.6em;	
+}
+
+/* index - news */
+
+.index .news .yui-g.first .yui-u h3,
+.index .news .yui-g.first .yui-u ul {
+	margin-left: 0.5em;
+}
+
+.index .news .item {
+	margin-bottom: 1em;
+}
+
+.index .news .item .date {
+	position: absolute;
+	left: 0;	
+	right: auto;
+}
+
+.index .news .item,
+.index .news .item .meta {
+	font-size: 93%;
+}
+
+.index .news .item .content {
+	padding-left: 0;
+}
+
+.index .news .item .ico {
+	width: 20px;
+	float: none;
+	display: inline;
+	overflow: hidden;
+	margin-right: 3px;
+}
+
+.index .news .item .ico img {
+	max-width: 20px;
+	max-height: 20px;
+	margin-bottom: -6px;
+}
+
+.index .news .item .meta {
+	position: relative;
+	text-align: right;
+	padding: 0 0 0.3em 0;
+}
+
+/* index - topics (explore) */
+
+.index .main .explore {
+	font-size: 85%;
+	clear: both;
+	padding-left: 0.5em;
+}
+
+.index .main .explore a {
+	text-decoration: none;	
+}
+
+.index .main .explore ul.top {
+	margin-bottom: 0.4em;
+	font-weight: bold;
+}
+
+.index .main .explore ul ul {
+	margin-left: 1em;
+	font-weight: normal;	
+	margin-top: 0.2em;
+}
+
+.index .explore .yui-gb.item {
+	width: 100%;
+}
+
+.index .explore .yui-gb .yui-u {
+	width: 31%;
+}
+
+.index .yui-u {
+	margin: 0;	
+}
+
+/* login box */
+
+.head .user .login input.text {
+	width: 9em;
+}
+
+.head .user form.logout {
+	display: inline;	
+}
+
+/* format user generated content */
+
+/* lists */
+
+.content ul, .content ol {
+  display: block;
+  margin: 1em 0;
+  list-style-position: inside;
+}
+
+.content ul {
+  list-style-type: disc;	
+}
+
+.content ol {
+  list-style-type: decimal;	
+}
+
+.content li {
+  display: list-item;
+ /* list-style-position: inside; */
+ /* padding-left: 1em; *
+ margin-left: 1em;
+}
+
+.content ul li, .content ol ul li {
+	list-style-type: disc;
+}
+
+.content ol li, .content ul ol li {
+  list-style-type: decimal;	
+}
+
+/* nested lists have no top/bottom margins */
+.content ul ul,   .content ul ol,   .content ul dir,  .content ul menu, .content ul dl,
+.content ol ul,   .content ol ol,   .content ol dir,   .content ol menu,   .content ol dl,
+.content dir ul,  .content dir ol,  .content dir dir,  .content dir menu,  .content dir dl,
+.content dl ul,   .content dl ol,  .content  dl dir,  .content  dl menu, .content  dl dl {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* 2 deep unordered lists use a circle */
+.content ol ul, .content   ul ul {
+  list-style-type: circle;
+}
+
+/* 3 deep (or more) unordered lists use a square */
+.content ol ol ul,  .content    ol ul ul
+.content ul ol ul,   .content   ul ul ul {
+  list-style-type: square;
+}
+
+/* settings forms */
+
+body.form textarea {
+	margin-left: 25.8%;
+	width: 74.2%;
+}
+
+body.form .user.ico,
+body.form .user .ico {
+	float: left;	
+} 
+
+body.form .detail {
+	margin-left: 14px;
+}
+
+body.form .detail.user {
+	margin-left: 64px;
+}
+
+body.form label {
+	margin-bottom: 0.2em;
+}
+
+/* active users */
+
+.userlist .item {
+	margin-bottom: 0.5em;
+	clear: left;
+/*
+	float: left;
+	width: 48%;
+*/
+}
+
+.userlist .item .user.ico {
+	margin-top: 0;
+}
+
+/* board list */
+
+.boardlist h3 {
+	margin-bottom: 0.6em;
+}
+
+.boardlist .item {
+	margin-left: 1em;
+	padding-left: 2px;
+	margin-bottom: 0.6em;
+}
+
+.boardlist .item input {
+	margin-right: 2px;	
+}
+
+.boardlist .item .descr {
+	margin-left: 1em;
+	font-size: 93%;
+}
+
+.myboards .main .main .yui-button {
+	margin-right: 2em;	
+}
+
+/* msgbox */
+
+.msgbox .item .icowrp {
+	float: left;
+	width: 58px;
+	background-color: transparent;
+	background-image: url("../img/auth-arrow.png");
+	background-repeat: no-repeat;
+}
+
+.msgbox .item .icowrp .user.ico,
+.msgbox .item .icowrp .user .ico {
+	margin: 0;
+	float: none;
+}
+
+.msgbox .from .icowrp {
+	background-position: top right;
+}
+
+.msgbox .to .icowrp {
+	padding-left: 7px;
+	background-position: top left;
+}
