@@ -80,6 +80,8 @@ window.Fotki.App = {
                     <select id="fg-opt-sort">
                         <option value="newest">Od nejnovějších</option>
                         <option value="oldest">Od nejstarších</option>
+                        <option value="name_asc">Jméno autora (A-Z)</option>
+                        <option value="name_desc">Jméno autora (Z-A)</option>
                     </select>
                 </div>
                 
@@ -395,12 +397,21 @@ window.Fotki.App = {
 
     sortData: function() {
         const U = window.Fotki.Utils;
-        const sortFn = (a, b) => {
-            return U.settings.sortOrder === 'newest' ? b.ts - a.ts : a.ts - b.ts;
-        };
-        this.allItems.sort(sortFn);
+        const s = U.settings.sortOrder;
+        
+        let sortFn;
+        if (s === 'newest') sortFn = (a, b) => b.ts - a.ts;
+        else if (s === 'oldest') sortFn = (a, b) => a.ts - b.ts;
+        else if (s === 'name_asc') sortFn = (a, b) => a.user.localeCompare(b.user) || b.ts - a.ts;
+        else if (s === 'name_desc') sortFn = (a, b) => b.user.localeCompare(a.user) || b.ts - a.ts;
+
+        if (sortFn) this.allItems.sort(sortFn);
+        
+        // Always sort folder contents by Date (Newest), regardless of global sort
+        // because sorting a user's photos by their own name is meaningless.
+        const userContentSort = (a, b) => b.ts - a.ts;
         Object.keys(this.groupedData).forEach(u => {
-            this.groupedData[u].sort(sortFn);
+            this.groupedData[u].sort(userContentSort);
         });
     },
 
@@ -560,6 +571,13 @@ window.Fotki.App = {
         target.innerHTML = '';
 
         const users = Object.keys(this.groupedData);
+        
+        // SORT USERS FOR ROOT VIEW
+        const s = window.Fotki.Utils.settings.sortOrder;
+        if (s === 'name_asc') users.sort((a, b) => a.localeCompare(b));
+        else if (s === 'name_desc') users.sort((a, b) => b.localeCompare(a));
+        // Default (Date modes) relies on array order from extract (newest active)
+
         if (users.length === 0) {
             target.innerHTML = '<div style="color:#666; padding:20px; text-align:center;">Žádné fotky.</div>';
             this.appendLoadMoreBtn(target); 

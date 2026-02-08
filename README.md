@@ -1,6 +1,6 @@
 # 📸 Fotki pro Okoun.cz
 
-Userscript, který promění diskusní klub **Fotky** na Okounovi v moderní, přehlednou galerii.
+Userscript, který promění libovolný diskusní klub na [Okoun.cz](https://www.okoun.cz) v moderní, přehlednou galerii. Nyní funguje na celém serveru!
 
 ---
 
@@ -17,32 +17,46 @@ Vyberte si podle svého prohlížeče:
 ### 2. Krok: Nainstalujte Fotki
 Jakmile máte doplněk, klikněte na tento odkaz. Prohlížeč se vás zeptá, zda chcete skript nainstalovat – potvrďte to.
 
-👉 **[NAINSTALOVAT SKRIPT (v1.3)](https://github.com/hanenashi/fotki/releases/download/v1.3-single-file/fotki.user.js)**
+👉 **[NAINSTALOVAT SKRIPT (v4.4)](https://github.com/hanenashi/fotki/raw/main/fotki.user.js)**
 
 ---
 
 ## ✨ Funkce
 
+### 🌍 Funguje všude
+Tlačítko **`[ FOTKY ]`** se nyní zobrazuje v záhlaví každého klubu (Politika, Vztahy, Kočky...). Galerie se automaticky přizpůsobí aktuálnímu klubu.
+
 ### 📂 Chytré sdružování
-Místo procházení stovek příspěvků skript automaticky seskupí fotky do **"složek" podle autorů**. Hned vidíte, kdo nahrál kolik fotek (např. *MacPhisto (5)*, *Blasnik (2)*).
+Místo procházení stovek příspěvků skript automaticky seskupí fotky do **"složek" podle autorů**. Hned vidíte, kdo nahrál kolik fotek.
 
 ### 🖼️ Lightbox Galerie
 Kliknutím na fotku otevřete **celoobrazovkový prohlížeč** (lightbox):
-* **Plná kvalita:** Načítá původní (nezmenšené) obrázky.
-* **Navigace:** Listujte pomocí myši nebo šipek na klávesnici (`←` / `→`).
-* **Rychlé zavření:** Klávesa `Esc` zavře náhled, dalším stiskem zavřete celou galerii.
+* **Zoom myší:** Najeďte na fotku pro okamžité zvětšení detailů.
+* **Navigace:** Listujte pomocí šipek na klávesnici (`←` / `→`).
+* **Rychlé zavření:** Klávesa `Esc` zavře náhled.
 
-### ⚙️ Nastavení
+### ⏳ Stroj času (Historie)
+Umí prohledat hlubokou historii klubu (testováno až do roku 2007).
+* **Filtr data:** V nastavení zadejte "Od - Do" a skript najde fotky z té doby.
+* **Neúnavné načítání:** Skript automaticky přeskakuje stránky bez fotek ("kecací" období), dokud nenajde obrázky.
+* **Reset:** Červené tlačítko Reset vás okamžitě vrátí do současnosti.
+
+### 🛡️ Stabilita a Čištění
+* **Mrtvé linky:** Automaticky skrývá obrázky z mrtvých serverů (Tinypic, starý FB), takže galerie je čistá.
+* **Duplicity:** Inteligentně odstraňuje duplicitní fotky, které vznikají překryvem stránek na Okounovi.
+* **Ochrana:** "Jemné" načítání historie s pauzami, aby vás server neodpojil.
+
+---
+
+## ⚙️ Pokročilé Nastavení
 V horní liště galerie najdete ikonu ozubeného kola `⚙`:
-* **Sdružování:** Můžete vypnout složky a vidět všechny fotky jako jeden dlouhý stream.
-* **Řazení:** Možnost řadit fotky od nejnovějších nebo nejstarších.
-
-### 🔗 Kontext
-U každé fotky v galerii je ikona šipky `➜`, která otevře **původní příspěvek v novém okně**, abyste mohli na fotku ihned reagovat v diskusi.
+* **Editor Blacklistu:** Můžete sami přidávat nebo mazat domény, které nechcete vidět.
+* **Dávkování:** Nastavte si, kolik fotek se má načíst na jedno kliknutí.
+* **Sdružování:** Přepínač pro zobrazení podle uživatelů nebo plochý seznam.
 
 ---
 
 ## 🚀 Jak to použít
-1.  Jděte na [Okoun.cz / Fotky](https://www.okoun.cz/boards/fotky).
-2.  V horním menu (vedle "Hledat") klikněte na nové tlačítko **`[ FOTKY ]`**.
-3.  Užívejte si galerii!
+1.  Jděte na jakýkoliv klub na [Okoun.cz](https://www.okoun.cz).
+2.  V horním menu (vedle "Hledat") klikněte na nové tlačítko **`[ FOTKY ]`**.
+3.  Užívejte si galerii!
