@@ -17,7 +17,7 @@ window.Fotki.App = {
     isFetching: false,
     dateLimitMin: null, 
 
-    // Configuration - The "No Fly" List (Expanded v3.1)
+    // Configuration - The "No Fly" List
     deadHosts: [
         'tinypic.com',
         'fbcdn.net',
@@ -38,14 +38,14 @@ window.Fotki.App = {
         'imagesocket.com',
         'tides.ws',
         'kartinki.cz',
-        'mine.nu',           // montanistika.mine.nu
-        'ultrahost.pl',      // img.galeria.ultrahost.pl
+        'mine.nu',
+        'ultrahost.pl',
         'artatlarge.com',
-        'ic.cz',             // laredo.ic.cz
-        'over.cz',           // img.over.cz
+        'ic.cz',
+        'over.cz',
         'cosmoboy.cz',
-        'nepracuje.cz',      // caracho.nepracuje.cz
-        'nevk.us',           // photostream.nevk.us
+        'nepracuje.cz',
+        'nevk.us',
         'mfuhrer.net'
     ],
 
@@ -390,9 +390,19 @@ window.Fotki.App = {
                 if(btn) btn.textContent = `Načítám stranu ${pagesFetched + 1}... (nalezeno ${loadedPhotos})`;
 
                 const response = await fetch(self.nextPageUrl);
+                
+                // Network check
+                if (!response.ok) throw new Error('Server status: ' + response.status);
+
                 const text = await response.text();
                 const parser = new DOMParser();
                 const newDoc = parser.parseFromString(text, 'text/html');
+
+                // Structural check (Did we get a valid Okoun page?)
+                if (!newDoc.querySelector('.listing') && !newDoc.querySelector('.pager')) {
+                    console.warn('Fotki: Page structure invalid (maintenance/error page?)');
+                    throw new Error('Neplatná stránka');
+                }
 
                 const result = self.extractData(newDoc);
                 loadedPhotos += result.count;
@@ -409,18 +419,38 @@ window.Fotki.App = {
 
         } catch (e) {
             console.error('Fotki: Error loading more', e);
-            if(btn) btn.textContent = "Chyba sítě";
+            if(btn) {
+                btn.textContent = "Chyba (zkusit znovu)";
+                // KEEP the button valid so they can retry
+                btn.disabled = false; 
+                self.isFetching = false; 
+                return; // Exit early
+            }
         } finally {
             self.isFetching = false;
             U.hideLoader();
             
             const freshBtn = document.querySelector('.fg-load-more-btn');
             if (freshBtn) {
+                // If fetching failed (caught above), we returned already.
+                // If we are here, loop finished "normally" or hit stopLoading
+                
                 if (self.nextPageUrl) {
                     freshBtn.textContent = 'Načíst starší';
                     freshBtn.disabled = false;
                 } else {
+                    // True End of History
                     freshBtn.style.display = 'none';
+                    
+                    // Add "End" message if not already there
+                    if (!freshBtn.parentElement.querySelector('.fg-end-msg')) {
+                        const msg = document.createElement('div');
+                        msg.className = 'fg-end-msg';
+                        msg.style.color = '#555';
+                        msg.style.padding = '10px';
+                        msg.innerText = 'Konec historie';
+                        freshBtn.parentElement.appendChild(msg);
+                    }
                 }
             }
         }
@@ -452,15 +482,30 @@ window.Fotki.App = {
     // --- Renderers ---
 
     appendLoadMoreBtn: function(target) {
-        if (!this.nextPageUrl) return;
-        const container = document.createElement('div');
-        container.className = 'fg-load-more-container';
-        const btn = document.createElement('button');
-        btn.className = 'fg-load-more-btn';
-        btn.textContent = 'Načíst starší';
-        btn.onclick = () => this.loadMore();
-        container.appendChild(btn);
-        target.appendChild(container);
+        // Always recreate/append to bottom
+        let container = target.querySelector('.fg-load-more-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'fg-load-more-container';
+            target.appendChild(container);
+        } else {
+            target.appendChild(container); // Move to bottom
+        }
+        
+        container.innerHTML = ''; // Clear previous state
+
+        if (this.nextPageUrl) {
+            const btn = document.createElement('button');
+            btn.className = 'fg-load-more-btn';
+            btn.textContent = 'Načíst starší';
+            btn.onclick = () => this.loadMore();
+            container.appendChild(btn);
+        } else if (this.allItems.length > 0) {
+            const msg = document.createElement('div');
+            msg.style.color = '#555';
+            msg.innerText = 'Konec historie';
+            container.appendChild(msg);
+        }
     },
 
     renderRootUsers: function() {
@@ -499,14 +544,13 @@ window.Fotki.App = {
             const img = card.querySelector('img');
             const item = photos[0];
             
-            // SELF-HEALING: Try up to 5 photos if cover is dead
             let attempt = 0;
             const tryNext = () => {
                 attempt++;
                 if (attempt < photos.length && attempt < 5) {
                     img.src = photos[attempt].thumb;
                 } else {
-                    card.remove(); // All failed
+                    card.remove(); 
                 }
             };
 
