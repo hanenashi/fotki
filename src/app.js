@@ -131,7 +131,6 @@ window.Fotki.App = {
         lb.querySelector('.fg-lb-prev').onclick = (e) => { e.stopPropagation(); this.changeImage(-1); };
         lb.querySelector('.fg-lb-next').onclick = (e) => { e.stopPropagation(); this.changeImage(1); };
         
-        // Zoom Logic from Module
         imgEl.onclick = (e) => { e.stopPropagation(); window.Fotki.Lightbox.toggleZoom(e); };
 
         lb.querySelector('.fg-lb-canvas').onclick = (e) => {
@@ -175,7 +174,6 @@ window.Fotki.App = {
     // --- Scraping & Paging ---
 
     findNextPage: function(doc) {
-        // Okoun pager logic: look for .older link
         const el = doc.querySelector('.pager .older a'); 
         return el ? el.href : null;
     },
@@ -199,17 +197,17 @@ window.Fotki.App = {
             const dateText = linkEl ? linkEl.innerText.trim() : '';
             const timestamp = U.parseCzechDate(dateText);
 
+            // FIX: Removed strict width checks to allow new/loading images
             post.querySelectorAll('.content img').forEach(img => {
-                if (img.width > 30 || img.naturalWidth > 30 || !img.hasAttribute('width')) {
-                    if (!img.src.includes('cloudfront.net') && !img.src.includes('/img/')) {
-                        const item = {
-                            src: img.src, link: link, date: dateText, ts: timestamp, user: user
-                        };
-                        this.allItems.push(item);
-                        if (!this.groupedData[user]) this.groupedData[user] = [];
-                        this.groupedData[user].push(item);
-                        count++;
-                    }
+                // Filter only known "bad" patterns (avatars, icons)
+                if (!img.src.includes('cloudfront.net') && !img.src.includes('/img/')) {
+                    const item = {
+                        src: img.src, link: link, date: dateText, ts: timestamp, user: user
+                    };
+                    this.allItems.push(item);
+                    if (!this.groupedData[user]) this.groupedData[user] = [];
+                    this.groupedData[user].push(item);
+                    count++;
                 }
             });
         });
@@ -238,24 +236,16 @@ window.Fotki.App = {
         }
 
         try {
-            // Fetch older page
             const response = await fetch(this.nextPageUrl);
             const text = await response.text();
             
-            // Parse HTML
             const parser = new DOMParser();
             const newDoc = parser.parseFromString(text, 'text/html');
 
-            // Extract items
             const newCount = this.extractData(newDoc);
-            
-            // Update next link
             this.nextPageUrl = this.findNextPage(newDoc);
             
-            // Refresh
             this.refreshView();
-            
-            // Feedback?
             console.log(`Fotki: Loaded ${newCount} new photos.`);
 
         } catch (e) {
@@ -294,7 +284,6 @@ window.Fotki.App = {
     // --- Renderers ---
 
     appendLoadMoreBtn: function(target) {
-        // Only append if there is a next page
         if (!this.nextPageUrl) return;
 
         const container = document.createElement('div');
@@ -331,9 +320,14 @@ window.Fotki.App = {
             const card = document.createElement('div');
             card.className = 'fg-user-card';
             card.onclick = () => this.renderUserPhotos(user);
+            
+            // Prune Check: If all photos in a group are dead 404s, this card might eventually be empty.
+            // But we can't know that until we try to render the thumb. 
+            // Simple fix: Use first photo as thumb, add onerror to card.
+            
             card.innerHTML = `
                 <div class="fg-user-thumb">
-                    <img src="${photos[0].src}">
+                    <img src="${photos[0].src}" onerror="this.src='https://okoun.cz/images/icons/cross.gif'; this.style.opacity=0.3;">
                     <div class="fg-user-count">${photos.length}</div>
                 </div>
                 <div class="fg-user-info"><span class="fg-user-name">${user}</span></div>
@@ -358,10 +352,6 @@ window.Fotki.App = {
 
             this.currentList = this.groupedData[user];
             this.renderPhotoCards(target, this.currentList, false);
-            
-            // In User View, we usually don't show Load More for the *whole* site, 
-            // but we could if we wanted to find more photos of *this* user.
-            // For now, let's keep it simple and add it to see if we find more of this user.
             this.appendLoadMoreBtn(target);
 
             window.Fotki.Utils.hideLoader();
@@ -388,6 +378,7 @@ window.Fotki.App = {
             card.className = 'fg-photo-card';
             const userHtml = showUserLabel ? `<span class="fg-photo-user">${item.user}</span>` : '';
 
+            // FIX: Added onerror handler to remove card if 404
             card.innerHTML = `
                 <div class="fg-photo-box">
                     <img src="${item.src}" loading="lazy">
@@ -397,6 +388,13 @@ window.Fotki.App = {
                     <a href="${item.link}" target="_blank" class="fg-link" title="Otevřít příspěvek v novém okně">➜</a>
                 </div>
             `;
+            
+            const img = card.querySelector('img');
+            img.onerror = () => {
+                console.warn(`Fotki: Pruning dead image: ${item.src}`);
+                card.remove();
+            };
+
             card.querySelector('.fg-photo-box').onclick = () => { this.openLightbox(index); };
             container.appendChild(card);
         });
@@ -450,9 +448,6 @@ window.Fotki.App = {
         document.body.style.overflow = 'hidden';
         this.isOpen = true;
         
-        // Reset data on fresh open or persist? 
-        // Let's reset to ensure we get current page state, 
-        // then scrape current page.
         if (this.allItems.length === 0) {
             U.showLoader();
             this.resetData();
@@ -465,7 +460,6 @@ window.Fotki.App = {
                 U.hideLoader();
             }, 50);
         } else {
-             // If we already scraped, just show it.
             document.getElementById('fotki-gallery-root').style.display = 'flex';
         }
     },
