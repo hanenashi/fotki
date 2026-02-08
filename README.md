@@ -1,4 +1,6 @@
 # 📸 Fotki pro Okoun.cz
+# ignorujte hop hej tón, píše mi to gemini
+# Stroj času (Historie) je taková zdá se zabugovaná, používejte na vlastní nebezpečí
 
 Userscript, který promění libovolný diskusní klub na [Okoun.cz](https://www.okoun.cz) v moderní, přehlednou galerii. Nyní funguje na celém serveru!
 
