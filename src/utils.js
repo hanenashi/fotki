@@ -5,6 +5,7 @@ window.Fotki.Utils = {
     settings: {
         groupByUser: true,
         sortOrder: 'newest',
+        batchSize: 30, // Number of photos to load per "Load More" click
     },
 
     loadSettings: function() {
@@ -39,6 +40,18 @@ window.Fotki.Utils = {
         if (mon === undefined) return 0;
         const [h, m, s] = timeStr.split(':').map(x => parseInt(x, 10));
         return new Date(year, mon, day, h||0, m||0, s||0).getTime();
+    },
+
+    // Convert Date object to Okoun URL format (YYYYMMDD-HHMMSS)
+    dateToOkounParam: function(dateObj) {
+        const pad = (n) => n.toString().padStart(2, '0');
+        const y = dateObj.getFullYear();
+        const m = pad(dateObj.getMonth() + 1);
+        const d = pad(dateObj.getDate());
+        const h = pad(dateObj.getHours());
+        const min = pad(dateObj.getMinutes());
+        const s = pad(dateObj.getSeconds());
+        return `${y}${m}${d}-${h}${min}${s}`;
     },
 
     // UI Helpers

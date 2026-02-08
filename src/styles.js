@@ -38,7 +38,7 @@ window.Fotki.styles = `
 
     /* Settings Panel */
     #fg-settings-panel {
-        position: absolute; top: 50px; right: 15px; width: 250px;
+        position: absolute; top: 50px; right: 15px; width: 280px;
         background: #222; border: 1px solid #444; border-radius: 4px;
         padding: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
         display: none; z-index: 100;
@@ -48,10 +48,18 @@ window.Fotki.styles = `
     .fg-setting-row label { display: block; color: #aaa; margin-bottom: 5px; font-size: 12px; }
     .fg-setting-row select, .fg-setting-row input {
         background: #111; border: 1px solid #444; color: #eee;
-        padding: 5px; width: 100%; border-radius: 3px;
+        padding: 5px; width: 100%; border-radius: 3px; box-sizing: border-box;
     }
     .fg-checkbox-row { display: flex; align-items: center; justify-content: space-between; }
     .fg-checkbox-row input { width: auto; }
+    
+    .fg-date-group { display: flex; gap: 10px; }
+    .fg-date-group input { width: 100%; font-size: 11px; }
+    .fg-action-btn { 
+        width: 100%; padding: 8px; background: #d35400; color: white; border: none; 
+        cursor: pointer; border-radius: 3px; margin-top: 5px; font-weight: bold;
+    }
+    .fg-action-btn:hover { background: #e67e22; }
 
     /* Loader */
     #fg-loader {
