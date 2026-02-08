@@ -17,6 +17,15 @@ window.Fotki.App = {
     isFetching: false,
     dateLimitMin: null, 
 
+    // Configuration
+    deadHosts: [
+        'tinypic.com',
+        'fbcdn.net',
+        'sklad.obrazku.cz',
+        'media.novinky.cz', // Often dead or http-only
+        'img.ihned.cz'      // Often breaks
+    ],
+
     init: function() {
         const U = window.Fotki.Utils;
         U.loadSettings();
@@ -194,37 +203,52 @@ window.Fotki.App = {
 
     // --- Core Logic ---
 
-    // Pruning: Completely removes item from memory and UI
+    isSafeUrl: function(url) {
+        // 1. Check Dead Hosts
+        for (const host of this.deadHosts) {
+            if (url.includes(host)) return false;
+        }
+        // 2. Check System Images
+        if (url.includes('cloudfront.net') || url.includes('okoun.cz/images/')) return false;
+        return true;
+    },
+
+    upgradeUrl: function(url) {
+        if (url.startsWith('http://')) {
+            return url.replace('http://', 'https://');
+        }
+        return url;
+    },
+
     pruneItem: function(badItem) {
         this.allItems = this.allItems.filter(i => i !== badItem);
         if (this.groupedData[badItem.user]) {
             this.groupedData[badItem.user] = this.groupedData[badItem.user].filter(i => i !== badItem);
             
-            // If user folder is empty, delete it
             if (this.groupedData[badItem.user].length === 0) {
                 delete this.groupedData[badItem.user];
-                // Remove from DOM if visible
-                const cards = Array.from(document.querySelectorAll('.fg-user-card'));
-                const userCard = cards.find(el => el.dataset.user === badItem.user);
-                if (userCard) userCard.remove();
+                if (this.viewState === 'root') {
+                    const cards = Array.from(document.querySelectorAll('.fg-user-card'));
+                    const userCard = cards.find(el => el.dataset.user === badItem.user);
+                    if (userCard) userCard.remove();
+                }
             }
         }
     },
 
-    // Try to update a User Card if the cover image died
     recoverUserCard: function(user) {
+        if (this.viewState !== 'root') return;
+        
         const photos = this.groupedData[user];
         const card = Array.from(document.querySelectorAll('.fg-user-card')).find(el => el.dataset.user === user);
         
         if (!card) return;
 
         if (!photos || photos.length === 0) {
-            card.remove(); // Nothing left
+            card.remove(); 
         } else {
-            // Try the next photo as cover
             const img = card.querySelector('img');
             if (img) img.src = photos[0].thumb; 
-            // Update count
             const countEl = card.querySelector('.fg-user-count');
             if (countEl) countEl.innerText = photos.length;
         }
@@ -274,11 +298,16 @@ window.Fotki.App = {
             const timestamp = U.parseCzechDate(dateText);
 
             post.querySelectorAll('.content img').forEach(img => {
-                if (!img.src.includes('cloudfront.net') && !img.src.includes('okoun.cz/images/')) {
+                // Pre-filter: Check known bad hosts
+                if (this.isSafeUrl(img.src)) {
                     if (!img.hasAttribute('width') || img.width > 30) {
+                        
+                        // Force HTTPS to avoid mixed content warnings
+                        const safeSrc = this.upgradeUrl(img.src);
+
                         const item = {
-                            src: img.src, 
-                            thumb: this.getOpuThumb(img.src),
+                            src: safeSrc, 
+                            thumb: this.getOpuThumb(safeSrc),
                             link: link, date: dateText, ts: timestamp, user: user
                         };
                         
@@ -296,6 +325,11 @@ window.Fotki.App = {
         const nextEl = doc.querySelector('.pager .older a');
         let nextLink = nextEl ? nextEl.href : null;
         return { count, nextLink };
+    },
+
+    findNextPage: function(doc) {
+        const el = doc.querySelector('.pager .older a'); 
+        return el ? el.href : null;
     },
 
     sortData: function() {
@@ -448,12 +482,10 @@ window.Fotki.App = {
             const img = card.querySelector('img');
             const item = photos[0];
             
-            // Error Handler for User Cover
             img.onerror = () => {
-                this.pruneItem(item); // Remove dead item
-                this.recoverUserCard(user); // Try to show next available photo
+                this.pruneItem(item); 
+                this.recoverUserCard(user); 
             };
-            // "Soft 404" Handler (Tiny placeholders)
             img.onload = () => {
                 if (img.naturalWidth > 0 && img.naturalWidth < 50) {
                     this.pruneItem(item);
@@ -524,7 +556,6 @@ window.Fotki.App = {
             `;
             
             const img = card.querySelector('img');
-            
             const handleFail = () => {
                 card.remove(); 
                 this.pruneItem(item);
