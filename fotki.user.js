@@ -10,10 +10,10 @@
 // @supportURL   https://github.com/hanenashi/fotki/issues
 // @updateURL    https://github.com/hanenashi/fotki/raw/main/fotki.user.js
 // @downloadURL  https://github.com/hanenashi/fotki/raw/main/fotki.user.js
-// @require      https://github.com/hanenashi/fotki/raw/main/src/styles.js?v=1
-// @require      https://github.com/hanenashi/fotki/raw/main/src/utils.js?v=1
-// @require      https://github.com/hanenashi/fotki/raw/main/src/lightbox.js?v=1
-// @require      https://github.com/hanenashi/fotki/raw/main/src/app.js?v=1
+// @require      https://github.com/hanenashi/fotki/raw/main/src/styles.js?v=2.1
+// @require      https://github.com/hanenashi/fotki/raw/main/src/utils.js?v=2.1
+// @require      https://github.com/hanenashi/fotki/raw/main/src/lightbox.js?v=2.1
+// @require      https://github.com/hanenashi/fotki/raw/main/src/app.js?v=2.1
 // ==/UserScript==
 
 (function() {
@@ -29,6 +29,6 @@
         window.Fotki.App.init();
         console.log('Fotki: Modules loaded successfully.');
     } else {
-        console.error('Fotki: Failed to load modules.');
+        console.error('Fotki: Failed to load modules. Check your internet connection or GitHub status.');
     }
 })();
