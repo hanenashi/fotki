@@ -1,11 +1,15 @@
 // ==UserScript==
 // @name         fotki
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @description  Gallery with Lightbox, Loading States, Settings & Robust Sorting
 // @author       kokochan
 // @match        https://www.okoun.cz/boards/fotky*
 // @grant        GM_addStyle
+// @homepageURL  https://github.com/hanenashi/fotki
+// @supportURL   https://github.com/hanenashi/fotki/issues
+// @updateURL    https://github.com/hanenashi/fotki/raw/main/fotki.user.js
+// @downloadURL  https://github.com/hanenashi/fotki/raw/main/fotki.user.js
 // ==/UserScript==
 
 (function() {
