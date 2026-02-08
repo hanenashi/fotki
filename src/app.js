@@ -17,7 +17,7 @@ window.Fotki.App = {
     isFetching: false,
     dateLimitMin: null, 
 
-    // Configuration - The "No Fly" List
+    // Configuration - The "No Fly" List (Expanded v3.1)
     deadHosts: [
         'tinypic.com',
         'fbcdn.net',
@@ -32,7 +32,21 @@ window.Fotki.App = {
         'like.cz',
         'rajce.idnes.cz',
         'ukazto.com',
-        'q3.cz'
+        'q3.cz',
+        'downloadsedge.com',
+        'guzer.com',
+        'imagesocket.com',
+        'tides.ws',
+        'kartinki.cz',
+        'mine.nu',           // montanistika.mine.nu
+        'ultrahost.pl',      // img.galeria.ultrahost.pl
+        'artatlarge.com',
+        'ic.cz',             // laredo.ic.cz
+        'over.cz',           // img.over.cz
+        'cosmoboy.cz',
+        'nepracuje.cz',      // caracho.nepracuje.cz
+        'nevk.us',           // photostream.nevk.us
+        'mfuhrer.net'
     ],
 
     init: function() {
@@ -225,6 +239,40 @@ window.Fotki.App = {
             return url.replace('http://', 'https://');
         }
         return url;
+    },
+
+    pruneItem: function(badItem) {
+        this.allItems = this.allItems.filter(i => i !== badItem);
+        if (this.groupedData[badItem.user]) {
+            this.groupedData[badItem.user] = this.groupedData[badItem.user].filter(i => i !== badItem);
+            
+            if (this.groupedData[badItem.user].length === 0) {
+                delete this.groupedData[badItem.user];
+                if (this.viewState === 'root') {
+                    const cards = Array.from(document.querySelectorAll('.fg-user-card'));
+                    const userCard = cards.find(el => el.dataset.user === badItem.user);
+                    if (userCard) userCard.remove();
+                }
+            }
+        }
+    },
+
+    recoverUserCard: function(user) {
+        if (this.viewState !== 'root') return;
+        
+        const photos = this.groupedData[user];
+        const card = Array.from(document.querySelectorAll('.fg-user-card')).find(el => el.dataset.user === user);
+        
+        if (!card) return;
+
+        if (!photos || photos.length === 0) {
+            card.remove(); 
+        } else {
+            const img = card.querySelector('img');
+            if (img) img.src = photos[0].thumb; 
+            const countEl = card.querySelector('.fg-user-count');
+            if (countEl) countEl.innerText = photos.length;
+        }
     },
 
     resetData: function() {
@@ -449,23 +497,21 @@ window.Fotki.App = {
             `;
             
             const img = card.querySelector('img');
+            const item = photos[0];
             
-            // SELF-HEALING COVER IMAGE LOGIC
+            // SELF-HEALING: Try up to 5 photos if cover is dead
             let attempt = 0;
             const tryNext = () => {
                 attempt++;
-                // Try the next few photos in the array (max 5 tries)
-                if (attempt < photos.length && attempt < 5) { 
-                     img.src = photos[attempt].thumb;
+                if (attempt < photos.length && attempt < 5) {
+                    img.src = photos[attempt].thumb;
                 } else {
-                     // All attempts failed. Kill the user card visually.
-                     card.remove(); 
+                    card.remove(); // All failed
                 }
             };
 
             img.onerror = tryNext;
             img.onload = () => {
-                // If loaded but "Soft 404" (tiny icon)
                 if (img.naturalWidth > 0 && img.naturalWidth < 50) tryNext();
             };
             
@@ -534,8 +580,7 @@ window.Fotki.App = {
             const img = card.querySelector('img');
             const handleFail = () => {
                 card.remove(); 
-                // We do NOT modify global data here to avoid performance hits on large lists.
-                // Visual removal is sufficient for the user.
+                this.pruneItem(item);
             };
 
             img.onerror = handleFail;
