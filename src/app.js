@@ -61,12 +61,10 @@ window.Fotki.App = {
                     <label for="fg-opt-group">Sdružovat podle uživatelů</label>
                     <input type="checkbox" id="fg-opt-group">
                 </div>
-                
                 <div class="fg-setting-row">
                     <label>Fotek na stránku (dávka)</label>
                     <input type="number" id="fg-opt-batch" min="10" max="200" step="10">
                 </div>
-
                 <div class="fg-setting-row">
                     <label>Řazení</label>
                     <select id="fg-opt-sort">
@@ -74,9 +72,7 @@ window.Fotki.App = {
                         <option value="oldest">Od nejstarších</option>
                     </select>
                 </div>
-
                 <hr style="border:0; border-top:1px solid #444; margin: 15px 0;">
-                
                 <div class="fg-setting-row">
                     <label>Časové období (Od - Do)</label>
                     <div class="fg-date-group">
@@ -85,7 +81,6 @@ window.Fotki.App = {
                     </div>
                     <button id="fg-date-go" class="fg-action-btn">Načíst období</button>
                 </div>
-
                 <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #333; text-align: right; color: #555; font-size: 10px;">
                     Fotki v${version}
                 </div>
@@ -101,7 +96,6 @@ window.Fotki.App = {
             </div>
         `;
         
-        // Bind UI Events
         root.querySelector('#fg-close-btn').onclick = () => this.close();
         root.querySelector('#fg-back-btn').onclick = () => this.goBack();
         
@@ -130,7 +124,6 @@ window.Fotki.App = {
             if (val < 10) val = 10;
             U.saveSettings({ batchSize: val });
         };
-
         root.querySelector('#fg-date-go').onclick = () => {
             const dFrom = root.querySelector('#fg-date-from').value;
             const dTo = root.querySelector('#fg-date-to').value;
@@ -201,28 +194,39 @@ window.Fotki.App = {
 
     // --- Core Logic ---
 
-    // Visual Pruning: Hide the card immediately, clean data later if needed
-    pruneItem: function(badItem, cardElement) {
-        // 1. Hide the card visually (Immediate feedback)
-        if (cardElement) cardElement.style.display = 'none';
-
-        // 2. Remove from Data Model
+    // Pruning: Completely removes item from memory and UI
+    pruneItem: function(badItem) {
         this.allItems = this.allItems.filter(i => i !== badItem);
-        
         if (this.groupedData[badItem.user]) {
             this.groupedData[badItem.user] = this.groupedData[badItem.user].filter(i => i !== badItem);
             
-            // 3. If User is now empty, hide the User Folder Card
+            // If user folder is empty, delete it
             if (this.groupedData[badItem.user].length === 0) {
                 delete this.groupedData[badItem.user];
-                
-                // Find and hide the user folder card
-                // We use Array.from to allow array methods on NodeList
-                const userCards = Array.from(document.querySelectorAll('.fg-user-card'));
-                // Use innerText or data attribute if we added it (we didn't add data-user to all cards cleanly before, so let's rely on DOM structure if needed)
-                // Actually, let's rely on the fact that if we are in 'root' view, we might need a refresh.
-                // But a simple refresh is safer.
+                // Remove from DOM if visible
+                const cards = Array.from(document.querySelectorAll('.fg-user-card'));
+                const userCard = cards.find(el => el.dataset.user === badItem.user);
+                if (userCard) userCard.remove();
             }
+        }
+    },
+
+    // Try to update a User Card if the cover image died
+    recoverUserCard: function(user) {
+        const photos = this.groupedData[user];
+        const card = Array.from(document.querySelectorAll('.fg-user-card')).find(el => el.dataset.user === user);
+        
+        if (!card) return;
+
+        if (!photos || photos.length === 0) {
+            card.remove(); // Nothing left
+        } else {
+            // Try the next photo as cover
+            const img = card.querySelector('img');
+            if (img) img.src = photos[0].thumb; 
+            // Update count
+            const countEl = card.querySelector('.fg-user-count');
+            if (countEl) countEl.innerText = photos.length;
         }
     },
 
@@ -294,11 +298,6 @@ window.Fotki.App = {
         return { count, nextLink };
     },
 
-    findNextPage: function(doc) {
-        const el = doc.querySelector('.pager .older a'); 
-        return el ? el.href : null;
-    },
-
     sortData: function() {
         const U = window.Fotki.Utils;
         const sortFn = (a, b) => {
@@ -324,7 +323,7 @@ window.Fotki.App = {
         }
 
         const targetCount = U.settings.batchSize;
-        const MAX_PAGES_LIMIT = 8; // Reduce limit slightly for safety
+        const MAX_PAGES_LIMIT = 8; 
         
         let loadedPhotos = 0;
         let pagesFetched = 0;
@@ -332,10 +331,8 @@ window.Fotki.App = {
 
         try {
             while (loadedPhotos < targetCount && pagesFetched < MAX_PAGES_LIMIT && self.nextPageUrl && !stopLoading) {
-                
-                // THROTTLE: Wait 1s between pages to be gentle
                 if (pagesFetched > 0) {
-                    if(btn) btn.textContent = `Čekám... (ochrana připojení)`;
+                    if(btn) btn.textContent = `Čekám... (ochrana sítě)`;
                     await new Promise(r => setTimeout(r, 1000));
                 }
 
@@ -357,12 +354,11 @@ window.Fotki.App = {
                      self.nextPageUrl = null; 
                 }
             }
-            
             self.refreshView();
 
         } catch (e) {
             console.error('Fotki: Error loading more', e);
-            if(btn) btn.textContent = "Chyba sítě/načítání";
+            if(btn) btn.textContent = "Chyba sítě";
         } finally {
             self.isFetching = false;
             U.hideLoader();
@@ -406,15 +402,12 @@ window.Fotki.App = {
 
     appendLoadMoreBtn: function(target) {
         if (!this.nextPageUrl) return;
-
         const container = document.createElement('div');
         container.className = 'fg-load-more-container';
-        
         const btn = document.createElement('button');
         btn.className = 'fg-load-more-btn';
         btn.textContent = 'Načíst starší';
         btn.onclick = () => this.loadMore();
-        
         container.appendChild(btn);
         target.appendChild(container);
     },
@@ -441,6 +434,7 @@ window.Fotki.App = {
             
             const card = document.createElement('div');
             card.className = 'fg-user-card';
+            card.dataset.user = user; 
             card.onclick = () => this.renderUserPhotos(user);
             
             card.innerHTML = `
@@ -454,11 +448,17 @@ window.Fotki.App = {
             const img = card.querySelector('img');
             const item = photos[0];
             
+            // Error Handler for User Cover
             img.onerror = () => {
-                // Gentle Error Handling: Just fail visually
-                img.src = 'https://okoun.cz/images/icons/cross.gif';
-                img.style.opacity = 0.3;
-                this.pruneItem(item);
+                this.pruneItem(item); // Remove dead item
+                this.recoverUserCard(user); // Try to show next available photo
+            };
+            // "Soft 404" Handler (Tiny placeholders)
+            img.onload = () => {
+                if (img.naturalWidth > 0 && img.naturalWidth < 50) {
+                    this.pruneItem(item);
+                    this.recoverUserCard(user);
+                }
             };
             
             target.appendChild(card);
@@ -524,9 +524,15 @@ window.Fotki.App = {
             `;
             
             const img = card.querySelector('img');
-            img.onerror = () => {
-                // Gentle Prune: Hide card, clean data, DO NOT retry original
-                this.pruneItem(item, card);
+            
+            const handleFail = () => {
+                card.remove(); 
+                this.pruneItem(item);
+            };
+
+            img.onerror = handleFail;
+            img.onload = () => {
+                if (img.naturalWidth > 0 && img.naturalWidth < 50) handleFail();
             };
 
             card.querySelector('.fg-photo-box').onclick = () => { this.openLightbox(index); };
