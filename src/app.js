@@ -184,7 +184,6 @@ window.Fotki.App = {
         this.nextPageUrl = null;
     },
     
-    // Helper: Generate OPU Thumb URL
     getOpuThumb: function(url) {
         if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) {
             const parts = url.split('/');
@@ -212,8 +211,8 @@ window.Fotki.App = {
                     
                     if (!img.hasAttribute('width') || img.width > 30) {
                         const item = {
-                            src: img.src, // Full Resolution
-                            thumb: this.getOpuThumb(img.src), // Thumbnail (if OPU)
+                            src: img.src, 
+                            thumb: this.getOpuThumb(img.src),
                             link: link, 
                             date: dateText, 
                             ts: timestamp, 
@@ -241,6 +240,7 @@ window.Fotki.App = {
         });
     },
 
+    // --- NEW: Smart Multi-Page Loader ---
     loadMore: async function() {
         if (!this.nextPageUrl || this.isFetching) return;
         
@@ -251,18 +251,37 @@ window.Fotki.App = {
             btn.disabled = true;
         }
 
-        try {
-            const response = await fetch(this.nextPageUrl);
-            const text = await response.text();
-            
-            const parser = new DOMParser();
-            const newDoc = parser.parseFromString(text, 'text/html');
+        const MIN_PHOTOS_TARGET = 30; // Try to get at least this many photos
+        const MAX_PAGES_LIMIT = 5;    // Or stop after fetching this many pages
+        
+        let loadedPhotos = 0;
+        let pagesFetched = 0;
 
-            const newCount = this.extractData(newDoc);
-            this.nextPageUrl = this.findNextPage(newDoc);
+        try {
+            while (loadedPhotos < MIN_PHOTOS_TARGET && pagesFetched < MAX_PAGES_LIMIT && this.nextPageUrl) {
+                // Update Button Status
+                if (pagesFetched > 0 && btn) {
+                    btn.textContent = `Načítám... (nalezeno ${loadedPhotos} fotek)`;
+                }
+
+                // Fetch
+                const response = await fetch(this.nextPageUrl);
+                const text = await response.text();
+                
+                const parser = new DOMParser();
+                const newDoc = parser.parseFromString(text, 'text/html');
+
+                // Extract
+                const count = this.extractData(newDoc);
+                loadedPhotos += count;
+                pagesFetched++;
+
+                // Prepare next loop
+                this.nextPageUrl = this.findNextPage(newDoc);
+            }
             
             this.refreshView();
-            console.log(`Fotki: Loaded ${newCount} new photos.`);
+            console.log(`Fotki: Batch load finished. Fetched ${pagesFetched} pages, found ${loadedPhotos} photos.`);
 
         } catch (e) {
             console.error('Fotki: Error loading more', e);
@@ -272,6 +291,14 @@ window.Fotki.App = {
             }
         } finally {
             this.isFetching = false;
+            // Refresh button state in case it was stuck
+            const freshBtn = document.querySelector('.fg-load-more-btn');
+            if (freshBtn && this.nextPageUrl) {
+                freshBtn.textContent = 'Načíst starší';
+                freshBtn.disabled = false;
+            } else if (freshBtn) {
+                freshBtn.style.display = 'none'; // End of history
+            }
         }
     },
 
@@ -337,7 +364,6 @@ window.Fotki.App = {
             card.className = 'fg-user-card';
             card.onclick = () => this.renderUserPhotos(user);
             
-            // Use THUMB for folder cover
             card.innerHTML = `
                 <div class="fg-user-thumb">
                     <img src="${photos[0].thumb}" data-orig="${photos[0].src}">
@@ -346,13 +372,12 @@ window.Fotki.App = {
                 <div class="fg-user-info"><span class="fg-user-name">${user}</span></div>
             `;
             
-            // Fallback: If thumb fails, try original. If that fails, show cross.
             const img = card.querySelector('img');
             img.onerror = function() {
                 if (this.src !== this.dataset.orig) {
-                    this.src = this.dataset.orig; // Try full res
+                    this.src = this.dataset.orig; 
                 } else {
-                    this.src = 'https://okoun.cz/images/icons/cross.gif'; // Give up
+                    this.src = 'https://okoun.cz/images/icons/cross.gif'; 
                     this.style.opacity = 0.3;
                 }
             };
@@ -403,7 +428,6 @@ window.Fotki.App = {
             card.className = 'fg-photo-card';
             const userHtml = showUserLabel ? `<span class="fg-photo-user">${item.user}</span>` : '';
 
-            // Use THUMB for grid
             card.innerHTML = `
                 <div class="fg-photo-box">
                     <img src="${item.thumb}" loading="lazy" data-orig="${item.src}">
@@ -414,19 +438,17 @@ window.Fotki.App = {
                 </div>
             `;
             
-            // Fallback Logic
             const img = card.querySelector('img');
             img.onerror = function() {
                 if (this.src !== this.dataset.orig) {
                     console.warn(`Fotki: Thumb failed, retrying original: ${this.dataset.orig}`);
-                    this.src = this.dataset.orig; // Try full res
+                    this.src = this.dataset.orig; 
                 } else {
                     console.warn(`Fotki: Dead image pruned: ${this.src}`);
-                    card.remove(); // Give up
+                    card.remove(); 
                 }
             };
 
-            // Click opens Lightbox (uses item.src from data object, so it's always full res)
             card.querySelector('.fg-photo-box').onclick = () => { this.openLightbox(index); };
             container.appendChild(card);
         });
@@ -464,7 +486,6 @@ window.Fotki.App = {
 
         window.Fotki.Lightbox.resetZoom();
 
-        // Lightbox ALWAYS uses full resolution (item.src)
         imgEl.src = item.src;
         metaEl.innerHTML = `<span style="color:#d35400; font-weight:bold">${item.user}</span> &bull; ${item.date} (${this.currentIndex + 1} / ${this.currentList.length})`;
         linkEl.href = item.link;
