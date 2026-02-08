@@ -11,7 +11,7 @@ window.Fotki.App = {
     groupedData: {},
     currentList: [],
     currentIndex: 0,
-    seenUrls: new Set(), // DEDUPLICATION ENGINE
+    seenUrls: new Set(), 
     
     // Paging
     nextPageUrl: null,
@@ -123,11 +123,19 @@ window.Fotki.App = {
         setBtn.onclick = () => {
             setPanel.classList.toggle('active');
             if (setPanel.classList.contains('active')) {
-                // Populate Settings
-                root.querySelector('#fg-opt-group').checked = U.settings.groupByUser;
-                root.querySelector('#fg-opt-sort').value = U.settings.sortOrder;
-                root.querySelector('#fg-opt-batch').value = U.settings.batchSize;
-                root.querySelector('#fg-opt-blacklist').value = U.settings.deadHosts.join('\n');
+                // Ensure fresh settings load
+                const currentSettings = U.loadSettings();
+                
+                root.querySelector('#fg-opt-group').checked = currentSettings.groupByUser;
+                root.querySelector('#fg-opt-sort').value = currentSettings.sortOrder;
+                root.querySelector('#fg-opt-batch').value = currentSettings.batchSize;
+                
+                // Safe join
+                if (Array.isArray(currentSettings.deadHosts)) {
+                    root.querySelector('#fg-opt-blacklist').value = currentSettings.deadHosts.join('\n');
+                } else {
+                    root.querySelector('#fg-opt-blacklist').value = '';
+                }
             }
         };
 
@@ -151,7 +159,6 @@ window.Fotki.App = {
             const raw = e.target.value;
             const list = raw.split('\n').map(s => s.trim()).filter(s => s.length > 0);
             U.saveSettings({ deadHosts: list });
-            // Don't refresh immediately to avoid jarring UX, user will refresh manually or next load
         };
 
         // Date Logic
@@ -227,6 +234,12 @@ window.Fotki.App = {
 
     isSafeUrl: function(url) {
         const U = window.Fotki.Utils;
+        
+        // Defensive check: If settings are somehow still loading or broken, allow URL but log warning
+        if (!U.settings || !Array.isArray(U.settings.deadHosts)) {
+            return true; 
+        }
+
         for (const host of U.settings.deadHosts) {
             if (url.includes(host)) return false;
         }
@@ -285,7 +298,7 @@ window.Fotki.App = {
     resetData: function() {
         this.groupedData = {};
         this.allItems = [];
-        this.seenUrls.clear(); // Clear cache
+        this.seenUrls.clear(); 
         this.nextPageUrl = null;
         this.dateLimitMin = null;
     },
@@ -343,11 +356,7 @@ window.Fotki.App = {
                     if (!img.hasAttribute('width') || img.width > 30) {
                         const safeSrc = this.upgradeUrl(img.src);
                         
-                        // DEDUPLICATION CHECK
-                        if (this.seenUrls.has(safeSrc)) {
-                            // Skip duplicates (overlap in pages)
-                            return; 
-                        }
+                        if (this.seenUrls.has(safeSrc)) return; 
 
                         const item = {
                             src: safeSrc, 
@@ -357,7 +366,7 @@ window.Fotki.App = {
                         
                         if (this.dateLimitMin && timestamp < this.dateLimitMin) return; 
 
-                        this.seenUrls.add(safeSrc); // Mark as seen
+                        this.seenUrls.add(safeSrc); 
                         this.allItems.push(item);
                         if (!this.groupedData[user]) this.groupedData[user] = [];
                         this.groupedData[user].push(item);

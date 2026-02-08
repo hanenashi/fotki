@@ -1,20 +1,46 @@
 window.Fotki = window.Fotki || {};
 
 window.Fotki.Utils = {
-    // Settings Logic
+    // Default "No Fly" List
+    defaultDeadHosts: [
+        'tinypic.com', 'fbcdn.net', 'sklad.obrazku.cz', 'media.novinky.cz', 
+        'img.ihned.cz', 'fail.cz', 
+        'images.paraorkut.com', 'imgup.eu', 'like.cz', 'rajce.idnes.cz',
+        'ukazto.com', 'q3.cz', 'downloadsedge.com', 'guzer.com',
+        'imagesocket.com', 'tides.ws', 'kartinki.cz', 'mine.nu',
+        'ultrahost.pl', 'artatlarge.com', 'ic.cz', 'over.cz',
+        'cosmoboy.cz', 'nepracuje.cz', 'nevk.us', 'mfuhrer.net',
+        'img.galeria.ultrahost.pl', 's3.tinypic.com', 'img1.rajce.idnes.cz',
+        'img2.rajce.idnes.cz', 'img5.rajce.idnes.cz'
+    ],
+
     settings: {
         groupByUser: true,
         sortOrder: 'newest',
-        batchSize: 30, // Number of photos to load per "Load More" click
+        batchSize: 30,
+        deadHosts: [] 
     },
 
     loadSettings: function() {
         const saved = localStorage.getItem('fotki_settings');
+        
+        // 1. Start with fresh defaults
+        this.settings.deadHosts = [...this.defaultDeadHosts];
+        
         if (saved) {
             try {
-                this.settings = { ...this.settings, ...JSON.parse(saved) };
+                const parsed = JSON.parse(saved);
+                // 2. Merge saved settings
+                this.settings = { ...this.settings, ...parsed };
             } catch(e) { console.error('Settings error', e); }
         }
+
+        // 3. CRITICAL FIX: Repair corrupted/missing blacklist
+        if (!Array.isArray(this.settings.deadHosts) || this.settings.deadHosts.length === 0) {
+            console.warn('Fotki: Repaired broken blacklist settings.');
+            this.settings.deadHosts = [...this.defaultDeadHosts];
+        }
+
         return this.settings;
     },
 
@@ -42,7 +68,6 @@ window.Fotki.Utils = {
         return new Date(year, mon, day, h||0, m||0, s||0).getTime();
     },
 
-    // Convert Date object to Okoun URL format (YYYYMMDD-HHMMSS)
     dateToOkounParam: function(dateObj) {
         const pad = (n) => n.toString().padStart(2, '0');
         const y = dateObj.getFullYear();
@@ -54,7 +79,6 @@ window.Fotki.Utils = {
         return `${y}${m}${d}-${h}${min}${s}`;
     },
 
-    // UI Helpers
     showLoader: function() { 
         const el = document.getElementById('fg-loader');
         if(el) el.style.display = 'flex'; 
