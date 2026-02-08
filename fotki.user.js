@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         fotki
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2.1
 // @description  Gallery with Lightbox (Mouse-Follow Zoom), Loading States & Settings
 // @author       kokochan
 // @match        https://www.okoun.cz/boards/fotky*

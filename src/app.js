@@ -33,6 +33,9 @@ window.Fotki.App = {
     },
 
     buildOverlay: function() {
+        // Get version from Userscript Manager (Tampermonkey/Violentmonkey)
+        const version = (typeof GM_info !== 'undefined' && GM_info.script) ? GM_info.script.version : 'Dev';
+
         const root = document.createElement('div');
         root.id = 'fotki-gallery-root';
         root.innerHTML = `
@@ -59,6 +62,9 @@ window.Fotki.App = {
                         <option value="newest">Od nejnovějších</option>
                         <option value="oldest">Od nejstarších</option>
                     </select>
+                </div>
+                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #333; text-align: right; color: #555; font-size: 10px;">
+                    Fotki v${version}
                 </div>
             </div>
 
