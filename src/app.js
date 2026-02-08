@@ -11,26 +11,14 @@ window.Fotki.App = {
     groupedData: {},
     currentList: [],
     currentIndex: 0,
+    seenUrls: new Set(), // DEDUPLICATION ENGINE
     
     // Paging
     nextPageUrl: null,
     isFetching: false,
     dateLimitMin: null, 
 
-    // Configuration
-    deadHosts: [
-        'tinypic.com', 'fbcdn.net', 'sklad.obrazku.cz', 'media.novinky.cz', 
-        'img.ihned.cz', 'fail.cz', 
-        'images.paraorkut.com', 'imgup.eu', 'like.cz', 'rajce.idnes.cz',
-        'ukazto.com', 'q3.cz', 'downloadsedge.com', 'guzer.com',
-        'imagesocket.com', 'tides.ws', 'kartinki.cz', 'mine.nu',
-        'ultrahost.pl', 'artatlarge.com', 'ic.cz', 'over.cz',
-        'cosmoboy.cz', 'nepracuje.cz', 'nevk.us', 'mfuhrer.net',
-        'img.galeria.ultrahost.pl', 's3.tinypic.com', 'img1.rajce.idnes.cz',
-        'img2.rajce.idnes.cz', 'img5.rajce.idnes.cz'
-    ],
-
-    // Hosts we trust enough to try retrying (fetching original if thumb fails)
+    // Trusted for retry
     trustedHosts: [
         'peklo.biz',
         'opu.peklo.biz',
@@ -76,6 +64,7 @@ window.Fotki.App = {
                     <button id="fg-close-btn" class="fg-btn close">Zavřít (Esc)</button>
                 </div>
             </div>
+            
             <div id="fg-settings-panel">
                 <div class="fg-setting-row fg-checkbox-row">
                     <label for="fg-opt-group">Sdružovat podle uživatelů</label>
@@ -92,7 +81,16 @@ window.Fotki.App = {
                         <option value="oldest">Od nejstarších</option>
                     </select>
                 </div>
+                
                 <hr style="border:0; border-top:1px solid #444; margin: 15px 0;">
+                
+                <div class="fg-setting-row">
+                    <label>Blacklist domén (jedna na řádek)</label>
+                    <textarea id="fg-opt-blacklist" spellcheck="false"></textarea>
+                </div>
+
+                <hr style="border:0; border-top:1px solid #444; margin: 15px 0;">
+                
                 <div class="fg-setting-row">
                     <label>Časové období (Od - Do)</label>
                     <div class="fg-date-group">
@@ -105,10 +103,12 @@ window.Fotki.App = {
                     Fotki v${version}
                 </div>
             </div>
+
             <div id="fg-loader">
                 <div class="fg-spinner"></div>
                 <div>Načítám...</div>
             </div>
+
             <div class="fg-scroll-area">
                 <div id="fg-content-target"></div>
             </div>
@@ -123,12 +123,15 @@ window.Fotki.App = {
         setBtn.onclick = () => {
             setPanel.classList.toggle('active');
             if (setPanel.classList.contains('active')) {
+                // Populate Settings
                 root.querySelector('#fg-opt-group').checked = U.settings.groupByUser;
                 root.querySelector('#fg-opt-sort').value = U.settings.sortOrder;
                 root.querySelector('#fg-opt-batch').value = U.settings.batchSize;
+                root.querySelector('#fg-opt-blacklist').value = U.settings.deadHosts.join('\n');
             }
         };
 
+        // Basic Settings Events
         root.querySelector('#fg-opt-group').onchange = (e) => {
             U.saveSettings({ groupByUser: e.target.checked });
             this.forceRefresh();
@@ -142,6 +145,16 @@ window.Fotki.App = {
             if (val < 10) val = 10;
             U.saveSettings({ batchSize: val });
         };
+
+        // Blacklist Save Event
+        root.querySelector('#fg-opt-blacklist').onchange = (e) => {
+            const raw = e.target.value;
+            const list = raw.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+            U.saveSettings({ deadHosts: list });
+            // Don't refresh immediately to avoid jarring UX, user will refresh manually or next load
+        };
+
+        // Date Logic
         root.querySelector('#fg-date-go').onclick = () => {
             const dFrom = root.querySelector('#fg-date-from').value;
             const dTo = root.querySelector('#fg-date-to').value;
@@ -213,7 +226,8 @@ window.Fotki.App = {
     // --- Core Logic ---
 
     isSafeUrl: function(url) {
-        for (const host of this.deadHosts) {
+        const U = window.Fotki.Utils;
+        for (const host of U.settings.deadHosts) {
             if (url.includes(host)) return false;
         }
         if (url.includes('cloudfront.net') || url.includes('okoun.cz/images/')) return false;
@@ -271,6 +285,7 @@ window.Fotki.App = {
     resetData: function() {
         this.groupedData = {};
         this.allItems = [];
+        this.seenUrls.clear(); // Clear cache
         this.nextPageUrl = null;
         this.dateLimitMin = null;
     },
@@ -300,11 +315,8 @@ window.Fotki.App = {
     },
 
     findNextPage: function(doc) {
-        // 1. Try standard CSS selector
         let el = doc.querySelector('.pager .older a');
         if (el) return el.href;
-
-        // 2. Brute Force: Find any link in Pager containing "Starší"
         const pagerLinks = doc.querySelectorAll('.pager a');
         for (let i = 0; i < pagerLinks.length; i++) {
             if (pagerLinks[i].innerText.includes('Starší')) {
@@ -330,6 +342,13 @@ window.Fotki.App = {
                 if (this.isSafeUrl(img.src)) {
                     if (!img.hasAttribute('width') || img.width > 30) {
                         const safeSrc = this.upgradeUrl(img.src);
+                        
+                        // DEDUPLICATION CHECK
+                        if (this.seenUrls.has(safeSrc)) {
+                            // Skip duplicates (overlap in pages)
+                            return; 
+                        }
+
                         const item = {
                             src: safeSrc, 
                             thumb: this.getOpuThumb(safeSrc),
@@ -338,6 +357,7 @@ window.Fotki.App = {
                         
                         if (this.dateLimitMin && timestamp < this.dateLimitMin) return; 
 
+                        this.seenUrls.add(safeSrc); // Mark as seen
                         this.allItems.push(item);
                         if (!this.groupedData[user]) this.groupedData[user] = [];
                         this.groupedData[user].push(item);
@@ -406,7 +426,6 @@ window.Fotki.App = {
                 pagesFetched++;
                 
                 let foundNext = result.nextLink;
-                // Double check for next link if extract failed to find it
                 if (!foundNext) {
                     const fallbackEl = newDoc.querySelector('.pager .older a');
                     if (fallbackEl) foundNext = fallbackEl.href;
@@ -552,10 +571,8 @@ window.Fotki.App = {
                 }
             };
 
-            // FIX: Smart Fallback for Trusted Hosts (e.g. Lucifer's Opu)
             img.onerror = () => {
                 if (this.isTrustedHost(item.src) && img.src !== item.src) {
-                    // It was a thumb failure on a trusted host. Try original!
                     console.log(`Fotki: Thumb failed for ${user}, trying original.`);
                     img.src = item.src;
                 } else {
@@ -635,12 +652,10 @@ window.Fotki.App = {
                 this.pruneItem(item);
             };
 
-            // Kill stuck images after 15s (Lucifer fix)
             const stuckTimer = setTimeout(() => {
                 if (!img.complete || img.naturalWidth === 0) handleFail();
             }, 15000);
 
-            // FIX: Smart Fallback for Trusted Hosts
             img.onerror = () => {
                 clearTimeout(stuckTimer);
                 if (this.isTrustedHost(item.src) && img.src !== item.src) {
