@@ -183,6 +183,16 @@ window.Fotki.App = {
         this.allItems = [];
         this.nextPageUrl = null;
     },
+    
+    // Helper: Generate OPU Thumb URL
+    getOpuThumb: function(url) {
+        if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) {
+            const parts = url.split('/');
+            const filename = parts.pop();
+            return parts.join('/') + '/thumbs/' + filename;
+        }
+        return url;
+    },
 
     extractData: function(doc) {
         const U = window.Fotki.Utils;
@@ -198,15 +208,16 @@ window.Fotki.App = {
             const timestamp = U.parseCzechDate(dateText);
 
             post.querySelectorAll('.content img').forEach(img => {
-                // FIXED: Removed the generic '/img/' exclusion which was blocking user photos
-                // Now only excludes cloudfront (avatars) and explicit okoun system icons
                 if (!img.src.includes('cloudfront.net') && !img.src.includes('okoun.cz/images/')) {
                     
-                    // Basic sanity check: if it has width attr, it must be > 30.
-                    // If no width attr, assume it's a photo (and let onerror prune it if dead).
                     if (!img.hasAttribute('width') || img.width > 30) {
                         const item = {
-                            src: img.src, link: link, date: dateText, ts: timestamp, user: user
+                            src: img.src, // Full Resolution
+                            thumb: this.getOpuThumb(img.src), // Thumbnail (if OPU)
+                            link: link, 
+                            date: dateText, 
+                            ts: timestamp, 
+                            user: user
                         };
                         this.allItems.push(item);
                         if (!this.groupedData[user]) this.groupedData[user] = [];
@@ -326,13 +337,26 @@ window.Fotki.App = {
             card.className = 'fg-user-card';
             card.onclick = () => this.renderUserPhotos(user);
             
+            // Use THUMB for folder cover
             card.innerHTML = `
                 <div class="fg-user-thumb">
-                    <img src="${photos[0].src}" onerror="this.src='https://okoun.cz/images/icons/cross.gif'; this.style.opacity=0.3;">
+                    <img src="${photos[0].thumb}" data-orig="${photos[0].src}">
                     <div class="fg-user-count">${photos.length}</div>
                 </div>
                 <div class="fg-user-info"><span class="fg-user-name">${user}</span></div>
             `;
+            
+            // Fallback: If thumb fails, try original. If that fails, show cross.
+            const img = card.querySelector('img');
+            img.onerror = function() {
+                if (this.src !== this.dataset.orig) {
+                    this.src = this.dataset.orig; // Try full res
+                } else {
+                    this.src = 'https://okoun.cz/images/icons/cross.gif'; // Give up
+                    this.style.opacity = 0.3;
+                }
+            };
+            
             target.appendChild(card);
         });
 
@@ -379,9 +403,10 @@ window.Fotki.App = {
             card.className = 'fg-photo-card';
             const userHtml = showUserLabel ? `<span class="fg-photo-user">${item.user}</span>` : '';
 
+            // Use THUMB for grid
             card.innerHTML = `
                 <div class="fg-photo-box">
-                    <img src="${item.src}" loading="lazy">
+                    <img src="${item.thumb}" loading="lazy" data-orig="${item.src}">
                 </div>
                 <div class="fg-photo-meta">
                     <div>${userHtml}<span style="color:#aaa">${item.date}</span></div>
@@ -389,12 +414,19 @@ window.Fotki.App = {
                 </div>
             `;
             
+            // Fallback Logic
             const img = card.querySelector('img');
-            img.onerror = () => {
-                console.warn(`Fotki: Pruning dead image: ${item.src}`);
-                card.remove();
+            img.onerror = function() {
+                if (this.src !== this.dataset.orig) {
+                    console.warn(`Fotki: Thumb failed, retrying original: ${this.dataset.orig}`);
+                    this.src = this.dataset.orig; // Try full res
+                } else {
+                    console.warn(`Fotki: Dead image pruned: ${this.src}`);
+                    card.remove(); // Give up
+                }
             };
 
+            // Click opens Lightbox (uses item.src from data object, so it's always full res)
             card.querySelector('.fg-photo-box').onclick = () => { this.openLightbox(index); };
             container.appendChild(card);
         });
@@ -432,6 +464,7 @@ window.Fotki.App = {
 
         window.Fotki.Lightbox.resetZoom();
 
+        // Lightbox ALWAYS uses full resolution (item.src)
         imgEl.src = item.src;
         metaEl.innerHTML = `<span style="color:#d35400; font-weight:bold">${item.user}</span> &bull; ${item.date} (${this.currentIndex + 1} / ${this.currentList.length})`;
         linkEl.href = item.link;
