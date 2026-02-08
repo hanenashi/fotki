@@ -197,17 +197,22 @@ window.Fotki.App = {
             const dateText = linkEl ? linkEl.innerText.trim() : '';
             const timestamp = U.parseCzechDate(dateText);
 
-            // FIX: Removed strict width checks to allow new/loading images
             post.querySelectorAll('.content img').forEach(img => {
-                // Filter only known "bad" patterns (avatars, icons)
-                if (!img.src.includes('cloudfront.net') && !img.src.includes('/img/')) {
-                    const item = {
-                        src: img.src, link: link, date: dateText, ts: timestamp, user: user
-                    };
-                    this.allItems.push(item);
-                    if (!this.groupedData[user]) this.groupedData[user] = [];
-                    this.groupedData[user].push(item);
-                    count++;
+                // FIXED: Removed the generic '/img/' exclusion which was blocking user photos
+                // Now only excludes cloudfront (avatars) and explicit okoun system icons
+                if (!img.src.includes('cloudfront.net') && !img.src.includes('okoun.cz/images/')) {
+                    
+                    // Basic sanity check: if it has width attr, it must be > 30.
+                    // If no width attr, assume it's a photo (and let onerror prune it if dead).
+                    if (!img.hasAttribute('width') || img.width > 30) {
+                        const item = {
+                            src: img.src, link: link, date: dateText, ts: timestamp, user: user
+                        };
+                        this.allItems.push(item);
+                        if (!this.groupedData[user]) this.groupedData[user] = [];
+                        this.groupedData[user].push(item);
+                        count++;
+                    }
                 }
             });
         });
@@ -321,10 +326,6 @@ window.Fotki.App = {
             card.className = 'fg-user-card';
             card.onclick = () => this.renderUserPhotos(user);
             
-            // Prune Check: If all photos in a group are dead 404s, this card might eventually be empty.
-            // But we can't know that until we try to render the thumb. 
-            // Simple fix: Use first photo as thumb, add onerror to card.
-            
             card.innerHTML = `
                 <div class="fg-user-thumb">
                     <img src="${photos[0].src}" onerror="this.src='https://okoun.cz/images/icons/cross.gif'; this.style.opacity=0.3;">
@@ -378,7 +379,6 @@ window.Fotki.App = {
             card.className = 'fg-photo-card';
             const userHtml = showUserLabel ? `<span class="fg-photo-user">${item.user}</span>` : '';
 
-            // FIX: Added onerror handler to remove card if 404
             card.innerHTML = `
                 <div class="fg-photo-box">
                     <img src="${item.src}" loading="lazy">
