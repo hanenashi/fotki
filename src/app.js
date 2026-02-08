@@ -140,7 +140,6 @@ window.Fotki.App = {
             }
         };
 
-        // Basic Settings Events
         root.querySelector('#fg-opt-group').onchange = (e) => {
             U.saveSettings({ groupByUser: e.target.checked });
             this.forceRefresh();
@@ -160,7 +159,6 @@ window.Fotki.App = {
             U.saveSettings({ deadHosts: list });
         };
 
-        // Date Logic
         root.querySelector('#fg-date-go').onclick = () => {
             const dFrom = root.querySelector('#fg-date-from').value;
             const dTo = root.querySelector('#fg-date-to').value;
@@ -168,7 +166,6 @@ window.Fotki.App = {
             setPanel.classList.remove('active');
         };
         
-        // Reset Logic
         root.querySelector('#fg-date-reset').onclick = () => {
             this.resetTimeTravel();
             setPanel.classList.remove('active');
@@ -356,7 +353,7 @@ window.Fotki.App = {
     extractData: function(doc) {
         const U = window.Fotki.Utils;
         let count = 0;
-        let stopSignal = false; // Flag to stop searching entirely
+        let stopSignal = false; 
 
         doc.querySelectorAll('.listing .item').forEach(post => {
             const userEl = post.querySelector('.meta .user');
@@ -366,11 +363,9 @@ window.Fotki.App = {
             const dateText = linkEl ? linkEl.innerText.trim() : '';
             const timestamp = U.parseCzechDate(dateText);
 
-            // DATE LIMIT CHECK
-            // If post has a valid timestamp and is older than our "From" limit, stop.
             if (this.dateLimitMin && timestamp > 0 && timestamp < this.dateLimitMin) {
                 stopSignal = true;
-                return; // Skip this item
+                return; 
             }
 
             post.querySelectorAll('.content img').forEach(img => {
@@ -451,10 +446,9 @@ window.Fotki.App = {
 
                 const result = self.extractData(newDoc);
                 
-                // If extractData said "We passed the date limit", stop immediately.
                 if (result.stopSignal) {
                     stopLoading = true;
-                    self.nextPageUrl = null; // Kill "More" button
+                    self.nextPageUrl = null; 
                 } else {
                     loadedPhotos += result.count;
                     pagesFetched++;
@@ -683,7 +677,6 @@ window.Fotki.App = {
                 this.pruneItem(item);
             };
 
-            // Kill stuck images after 15s (Lucifer fix)
             const stuckTimer = setTimeout(() => {
                 if (!img.complete || img.naturalWidth === 0) handleFail();
             }, 15000);
