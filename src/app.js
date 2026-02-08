@@ -17,36 +17,17 @@ window.Fotki.App = {
     isFetching: false,
     dateLimitMin: null, 
 
-    // Configuration - The "No Fly" List
+    // Configuration
     deadHosts: [
-        'tinypic.com',
-        'fbcdn.net',
-        'sklad.obrazku.cz',
-        'media.novinky.cz', 
-        'img.ihned.cz',
-        'fail.cz',
-        'flickr.com',
-        'static.flickr.com',
-        'images.paraorkut.com',
-        'imgup.eu',
-        'like.cz',
-        'rajce.idnes.cz',
-        'ukazto.com',
-        'q3.cz',
-        'downloadsedge.com',
-        'guzer.com',
-        'imagesocket.com',
-        'tides.ws',
-        'kartinki.cz',
-        'mine.nu',
-        'ultrahost.pl',
-        'artatlarge.com',
-        'ic.cz',
-        'over.cz',
-        'cosmoboy.cz',
-        'nepracuje.cz',
-        'nevk.us',
-        'mfuhrer.net'
+        'tinypic.com', 'fbcdn.net', 'sklad.obrazku.cz', 'media.novinky.cz', 
+        'img.ihned.cz', 'fail.cz', 'flickr.com', 'static.flickr.com',
+        'images.paraorkut.com', 'imgup.eu', 'like.cz', 'rajce.idnes.cz',
+        'ukazto.com', 'q3.cz', 'downloadsedge.com', 'guzer.com',
+        'imagesocket.com', 'tides.ws', 'kartinki.cz', 'mine.nu',
+        'ultrahost.pl', 'artatlarge.com', 'ic.cz', 'over.cz',
+        'cosmoboy.cz', 'nepracuje.cz', 'nevk.us', 'mfuhrer.net',
+        'img.galeria.ultrahost.pl', 's3.tinypic.com', 'img1.rajce.idnes.cz',
+        'img2.rajce.idnes.cz', 'img5.rajce.idnes.cz'
     ],
 
     init: function() {
@@ -87,7 +68,6 @@ window.Fotki.App = {
                     <button id="fg-close-btn" class="fg-btn close">Zavřít (Esc)</button>
                 </div>
             </div>
-            
             <div id="fg-settings-panel">
                 <div class="fg-setting-row fg-checkbox-row">
                     <label for="fg-opt-group">Sdružovat podle uživatelů</label>
@@ -117,12 +97,10 @@ window.Fotki.App = {
                     Fotki v${version}
                 </div>
             </div>
-
             <div id="fg-loader">
                 <div class="fg-spinner"></div>
                 <div>Načítám...</div>
             </div>
-
             <div class="fg-scroll-area">
                 <div id="fg-content-target"></div>
             </div>
@@ -257,24 +235,6 @@ window.Fotki.App = {
         }
     },
 
-    recoverUserCard: function(user) {
-        if (this.viewState !== 'root') return;
-        
-        const photos = this.groupedData[user];
-        const card = Array.from(document.querySelectorAll('.fg-user-card')).find(el => el.dataset.user === user);
-        
-        if (!card) return;
-
-        if (!photos || photos.length === 0) {
-            card.remove(); 
-        } else {
-            const img = card.querySelector('img');
-            if (img) img.src = photos[0].thumb; 
-            const countEl = card.querySelector('.fg-user-count');
-            if (countEl) countEl.innerText = photos.length;
-        }
-    },
-
     resetData: function() {
         this.groupedData = {};
         this.allItems = [];
@@ -304,6 +264,22 @@ window.Fotki.App = {
         this.resetData();
         this.nextPageUrl = startUrl; 
         this.loadMore(true); 
+    },
+
+    // ROBUST NEXT PAGE FINDER
+    findNextPage: function(doc) {
+        // 1. Try standard CSS selector
+        let el = doc.querySelector('.pager .older a');
+        if (el) return el.href;
+
+        // 2. Brute Force: Find any link in Pager containing "Starší"
+        const pagerLinks = doc.querySelectorAll('.pager a');
+        for (let i = 0; i < pagerLinks.length; i++) {
+            if (pagerLinks[i].innerText.includes('Starší')) {
+                return pagerLinks[i].href;
+            }
+        }
+        return null;
     },
 
     extractData: function(doc) {
@@ -339,14 +315,7 @@ window.Fotki.App = {
             });
         });
         
-        const nextEl = doc.querySelector('.pager .older a');
-        let nextLink = nextEl ? nextEl.href : null;
-        return { count, nextLink };
-    },
-
-    findNextPage: function(doc) {
-        const el = doc.querySelector('.pager .older a'); 
-        return el ? el.href : null;
+        return { count, nextLink: this.findNextPage(doc) };
     },
 
     sortData: function() {
@@ -374,7 +343,7 @@ window.Fotki.App = {
         }
 
         const targetCount = U.settings.batchSize;
-        const MAX_PAGES_LIMIT = 8; 
+        const MAX_PAGES_LIMIT = 50; 
         
         let loadedPhotos = 0;
         let pagesFetched = 0;
@@ -383,24 +352,20 @@ window.Fotki.App = {
         try {
             while (loadedPhotos < targetCount && pagesFetched < MAX_PAGES_LIMIT && self.nextPageUrl && !stopLoading) {
                 if (pagesFetched > 0) {
-                    if(btn) btn.textContent = `Čekám... (ochrana sítě)`;
-                    await new Promise(r => setTimeout(r, 1000));
+                    if(btn) btn.textContent = `Hledám fotky... (${pagesFetched} stran)`;
+                    await new Promise(r => setTimeout(r, 800));
                 }
 
-                if(btn) btn.textContent = `Načítám stranu ${pagesFetched + 1}... (nalezeno ${loadedPhotos})`;
+                if(btn) btn.textContent = `Hledám... (nalezeno ${loadedPhotos})`;
 
                 const response = await fetch(self.nextPageUrl);
-                
-                // Network check
                 if (!response.ok) throw new Error('Server status: ' + response.status);
 
                 const text = await response.text();
                 const parser = new DOMParser();
                 const newDoc = parser.parseFromString(text, 'text/html');
 
-                // Structural check (Did we get a valid Okoun page?)
                 if (!newDoc.querySelector('.listing') && !newDoc.querySelector('.pager')) {
-                    console.warn('Fotki: Page structure invalid (maintenance/error page?)');
                     throw new Error('Neplatná stránka');
                 }
 
@@ -415,16 +380,16 @@ window.Fotki.App = {
                      self.nextPageUrl = null; 
                 }
             }
+            
             self.refreshView();
 
         } catch (e) {
             console.error('Fotki: Error loading more', e);
             if(btn) {
                 btn.textContent = "Chyba (zkusit znovu)";
-                // KEEP the button valid so they can retry
-                btn.disabled = false; 
-                self.isFetching = false; 
-                return; // Exit early
+                btn.disabled = false;
+                self.isFetching = false;
+                return;
             }
         } finally {
             self.isFetching = false;
@@ -432,24 +397,24 @@ window.Fotki.App = {
             
             const freshBtn = document.querySelector('.fg-load-more-btn');
             if (freshBtn) {
-                // If fetching failed (caught above), we returned already.
-                // If we are here, loop finished "normally" or hit stopLoading
-                
                 if (self.nextPageUrl) {
                     freshBtn.textContent = 'Načíst starší';
                     freshBtn.disabled = false;
                 } else {
-                    // True End of History
-                    freshBtn.style.display = 'none';
-                    
-                    // Add "End" message if not already there
-                    if (!freshBtn.parentElement.querySelector('.fg-end-msg')) {
-                        const msg = document.createElement('div');
-                        msg.className = 'fg-end-msg';
-                        msg.style.color = '#555';
-                        msg.style.padding = '10px';
-                        msg.innerText = 'Konec historie';
-                        freshBtn.parentElement.appendChild(msg);
+                    // MANUAL RETRY BUTTON INSTEAD OF DISAPPEARING
+                    // If we genuinely hit the end, we show "End".
+                    // If we are confused, we let user click again.
+                    if (document.querySelector('.listing .item')) { // Just a sanity check if ANY posts exist
+                         freshBtn.textContent = 'Zkusit najít další (konec?)';
+                         freshBtn.disabled = false;
+                         freshBtn.style.display = 'inline-block';
+                         freshBtn.onclick = () => { 
+                             // Force a manual attempt if user clicks
+                             if (!self.nextPageUrl) console.log("Really no URL found.");
+                             else self.loadMore(); 
+                         };
+                    } else {
+                        freshBtn.style.display = 'none';
                     }
                 }
             }
@@ -482,17 +447,16 @@ window.Fotki.App = {
     // --- Renderers ---
 
     appendLoadMoreBtn: function(target) {
-        // Always recreate/append to bottom
         let container = target.querySelector('.fg-load-more-container');
         if (!container) {
             container = document.createElement('div');
             container.className = 'fg-load-more-container';
             target.appendChild(container);
         } else {
-            target.appendChild(container); // Move to bottom
+            target.appendChild(container); 
         }
         
-        container.innerHTML = ''; // Clear previous state
+        container.innerHTML = ''; 
 
         if (this.nextPageUrl) {
             const btn = document.createElement('button');
@@ -544,6 +508,7 @@ window.Fotki.App = {
             const img = card.querySelector('img');
             const item = photos[0];
             
+            // SELF-HEALING & ZOMBIE KILLER
             let attempt = 0;
             const tryNext = () => {
                 attempt++;
@@ -554,8 +519,20 @@ window.Fotki.App = {
                 }
             };
 
-            img.onerror = tryNext;
+            // Kill stuck images after 5 seconds
+            const stuckTimer = setTimeout(() => {
+                if (!img.complete || img.naturalWidth === 0) {
+                    console.warn(`Fotki: Zombie timeout for ${user}`);
+                    card.remove();
+                }
+            }, 5000);
+
+            img.onerror = () => {
+                clearTimeout(stuckTimer);
+                tryNext();
+            };
             img.onload = () => {
+                clearTimeout(stuckTimer);
                 if (img.naturalWidth > 0 && img.naturalWidth < 50) tryNext();
             };
             
@@ -627,8 +604,14 @@ window.Fotki.App = {
                 this.pruneItem(item);
             };
 
-            img.onerror = handleFail;
+            // Kill stuck images
+            const stuckTimer = setTimeout(() => {
+                if (!img.complete || img.naturalWidth === 0) handleFail();
+            }, 5000);
+
+            img.onerror = () => { clearTimeout(stuckTimer); handleFail(); };
             img.onload = () => {
+                clearTimeout(stuckTimer);
                 if (img.naturalWidth > 0 && img.naturalWidth < 50) handleFail();
             };
 
