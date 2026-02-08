@@ -213,11 +213,9 @@ window.Fotki.App = {
     // --- Core Logic ---
 
     isSafeUrl: function(url) {
-        // 1. Check Dead Hosts
         for (const host of this.deadHosts) {
             if (url.includes(host)) return false;
         }
-        // 2. Check System Images
         if (url.includes('cloudfront.net') || url.includes('okoun.cz/images/')) return false;
         return true;
     },
@@ -273,13 +271,9 @@ window.Fotki.App = {
             const timestamp = U.parseCzechDate(dateText);
 
             post.querySelectorAll('.content img').forEach(img => {
-                // Pre-filter: Check known bad hosts to save bandwidth/console
                 if (this.isSafeUrl(img.src)) {
                     if (!img.hasAttribute('width') || img.width > 30) {
-                        
-                        // Force HTTPS to avoid mixed content
                         const safeSrc = this.upgradeUrl(img.src);
-
                         const item = {
                             src: safeSrc, 
                             thumb: this.getOpuThumb(safeSrc),
@@ -456,12 +450,23 @@ window.Fotki.App = {
             
             const img = card.querySelector('img');
             
-            // ROOT VIEW SAFETY: 
-            // If cover dies, DO NOT retry. Just show broken placeholder.
-            // This prevents the infinite loop of death.
-            img.onerror = () => {
-                img.src = 'https://okoun.cz/images/icons/cross.gif';
-                img.style.opacity = 0.3;
+            // SELF-HEALING COVER IMAGE LOGIC
+            let attempt = 0;
+            const tryNext = () => {
+                attempt++;
+                // Try the next few photos in the array (max 5 tries)
+                if (attempt < photos.length && attempt < 5) { 
+                     img.src = photos[attempt].thumb;
+                } else {
+                     // All attempts failed. Kill the user card visually.
+                     card.remove(); 
+                }
+            };
+
+            img.onerror = tryNext;
+            img.onload = () => {
+                // If loaded but "Soft 404" (tiny icon)
+                if (img.naturalWidth > 0 && img.naturalWidth < 50) tryNext();
             };
             
             target.appendChild(card);
@@ -529,8 +534,8 @@ window.Fotki.App = {
             const img = card.querySelector('img');
             const handleFail = () => {
                 card.remove(); 
-                // Only clean data model, no UI refreshes here
-                this.allItems = this.allItems.filter(i => i !== item);
+                // We do NOT modify global data here to avoid performance hits on large lists.
+                // Visual removal is sufficient for the user.
             };
 
             img.onerror = handleFail;
