@@ -18,10 +18,11 @@ window.Fotki.App = {
     isFetching: false,
     dateLimitMin: null, 
 
-    // Trusted for retry
+    // Trusted for retry (Original resolution fallback)
     trustedHosts: [
         'peklo.biz',
         'opu.peklo.biz',
+        'pic.peklo.biz', // Lucifer's custom domain
         'flickr.com',
         'static.flickr.com'
     ],
@@ -97,7 +98,10 @@ window.Fotki.App = {
                         <input type="date" id="fg-date-from" title="Datum, kde se načítání zastaví">
                         <input type="date" id="fg-date-to" title="Datum, odkud se začne (skočí do historie)">
                     </div>
-                    <button id="fg-date-go" class="fg-action-btn">Načíst období</button>
+                    <div class="fg-btn-row">
+                        <button id="fg-date-go" class="fg-action-btn">Načíst období</button>
+                        <button id="fg-date-reset" class="fg-reset-btn" title="Zrušit filtr (zpět do současnosti)">✕</button>
+                    </div>
                 </div>
                 <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #333; text-align: right; color: #555; font-size: 10px;">
                     Fotki v${version}
@@ -123,14 +127,11 @@ window.Fotki.App = {
         setBtn.onclick = () => {
             setPanel.classList.toggle('active');
             if (setPanel.classList.contains('active')) {
-                // Ensure fresh settings load
                 const currentSettings = U.loadSettings();
-                
                 root.querySelector('#fg-opt-group').checked = currentSettings.groupByUser;
                 root.querySelector('#fg-opt-sort').value = currentSettings.sortOrder;
                 root.querySelector('#fg-opt-batch').value = currentSettings.batchSize;
                 
-                // Safe join
                 if (Array.isArray(currentSettings.deadHosts)) {
                     root.querySelector('#fg-opt-blacklist').value = currentSettings.deadHosts.join('\n');
                 } else {
@@ -139,7 +140,6 @@ window.Fotki.App = {
             }
         };
 
-        // Basic Settings Events
         root.querySelector('#fg-opt-group').onchange = (e) => {
             U.saveSettings({ groupByUser: e.target.checked });
             this.forceRefresh();
@@ -153,8 +153,6 @@ window.Fotki.App = {
             if (val < 10) val = 10;
             U.saveSettings({ batchSize: val });
         };
-
-        // Blacklist Save Event
         root.querySelector('#fg-opt-blacklist').onchange = (e) => {
             const raw = e.target.value;
             const list = raw.split('\n').map(s => s.trim()).filter(s => s.length > 0);
@@ -166,6 +164,12 @@ window.Fotki.App = {
             const dFrom = root.querySelector('#fg-date-from').value;
             const dTo = root.querySelector('#fg-date-to').value;
             this.startTimeTravel(dFrom, dTo);
+            setPanel.classList.remove('active');
+        };
+        
+        // Reset Logic
+        root.querySelector('#fg-date-reset').onclick = () => {
+            this.resetTimeTravel();
             setPanel.classList.remove('active');
         };
 
@@ -234,11 +238,7 @@ window.Fotki.App = {
 
     isSafeUrl: function(url) {
         const U = window.Fotki.Utils;
-        
-        // Defensive check: If settings are somehow still loading or broken, allow URL but log warning
-        if (!U.settings || !Array.isArray(U.settings.deadHosts)) {
-            return true; 
-        }
+        if (!U.settings || !Array.isArray(U.settings.deadHosts)) return true; 
 
         for (const host of U.settings.deadHosts) {
             if (url.includes(host)) return false;
@@ -279,7 +279,6 @@ window.Fotki.App = {
 
     recoverUserCard: function(user) {
         if (this.viewState !== 'root') return;
-        
         const photos = this.groupedData[user];
         const card = Array.from(document.querySelectorAll('.fg-user-card')).find(el => el.dataset.user === user);
         
@@ -304,6 +303,7 @@ window.Fotki.App = {
     },
     
     getOpuThumb: function(url) {
+        // Only valid for standard opu.peklo.biz/p/ uploads
         if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) {
             const parts = url.split('/');
             const filename = parts.pop();
@@ -325,6 +325,21 @@ window.Fotki.App = {
         this.resetData();
         this.nextPageUrl = startUrl; 
         this.loadMore(true); 
+    },
+
+    resetTimeTravel: function() {
+        const U = window.Fotki.Utils;
+        this.dateLimitMin = null;
+        document.getElementById('fg-date-from').value = '';
+        document.getElementById('fg-date-to').value = '';
+        
+        // Reset to base URL
+        const startUrl = window.location.href.split('?')[0];
+        
+        U.showLoader();
+        this.resetData();
+        this.nextPageUrl = startUrl;
+        this.loadMore(true);
     },
 
     findNextPage: function(doc) {
@@ -661,6 +676,7 @@ window.Fotki.App = {
                 this.pruneItem(item);
             };
 
+            // Kill stuck images after 15s (Lucifer fix)
             const stuckTimer = setTimeout(() => {
                 if (!img.complete || img.naturalWidth === 0) handleFail();
             }, 15000);
