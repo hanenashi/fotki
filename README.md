@@ -19,7 +19,7 @@ Vyberte si podle svého prohlížeče:
 ### 2. Krok: Nainstalujte Fotki
 Jakmile máte doplněk, klikněte na tento odkaz. Prohlížeč se vás zeptá, zda chcete skript nainstalovat – potvrďte to.
 
-👉 **[NAINSTALOVAT SKRIPT (v4.4)](https://github.com/hanenashi/fotki/raw/main/fotki.user.js)**
+👉 **[NAINSTALOVAT SKRIPT (v4.5)](https://github.com/hanenashi/fotki/raw/main/fotki.user.js)**
 
 ---
 
