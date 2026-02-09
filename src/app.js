@@ -18,18 +18,12 @@ window.Fotki.App = {
     isFetching: false,
     
     // Time Travel State
-    dateLimitMin: null, 
-    dateLimitMax: null,
+    dateLimitMin: null, dateLimitMax: null,
     isSeeking: false,
     stopRequested: false,
 
-    // Trusted for retry
     trustedHosts: [
-        'peklo.biz', 
-        'opu.peklo.biz', 
-        'pic.peklo.biz', 
-        'flickr.com', 
-        'static.flickr.com'
+        'peklo.biz', 'opu.peklo.biz', 'pic.peklo.biz', 'flickr.com', 'static.flickr.com'
     ],
 
     init: function() {
@@ -54,34 +48,12 @@ window.Fotki.App = {
         this.bindKeys();
     },
 
-    // --- V5.7: Enhanced Viewport Toggle ---
-    toggleViewport: function(enable) {
-        let meta = document.getElementById('fg-temp-viewport');
-        
-        if (enable) {
-            // Enable Mobile View
-            if (!meta && !document.querySelector('meta[name="viewport"]')) {
-                meta = document.createElement('meta');
-                meta.name = 'viewport';
-                meta.id = 'fg-temp-viewport';
-                meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-                document.head.appendChild(meta);
-            }
-        } else {
-            // Disable Mobile View (Restore Desktop)
-            if (meta) {
-                // Step 1: Force "Desktop" width briefly to trigger zoom-out
-                meta.content = 'width=1024, initial-scale=0.1'; 
-                
-                // Step 2: Remove the tag entirely after a tiny delay
-                // This forces the browser to recalculate the layout for the desktop site
-                setTimeout(() => {
-                    meta.remove();
-                }, 50);
-            }
-        }
+    // --- V5.8: Simple Mobile Detection ---
+    detectMobile: function() {
+        // Simple regex to detect if we are likely on a mobile device
+        return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
     },
-    // --------------------------------------
+    // -------------------------------------
 
     injectButton: function() {
         const menu = document.querySelector('.head .nav .menu');
@@ -89,10 +61,7 @@ window.Fotki.App = {
         const btn = document.createElement('a');
         btn.className = 'gallery-toggle';
         btn.textContent = 'Fotki'; 
-        btn.onclick = (e) => { 
-            e.preventDefault(); 
-            this.toggle(); 
-        };
+        btn.onclick = (e) => { e.preventDefault(); this.toggle(); };
         menu.appendChild(document.createTextNode(' '));
         menu.appendChild(btn);
     },
@@ -102,6 +71,13 @@ window.Fotki.App = {
         const version = (typeof GM_info !== 'undefined' && GM_info.script) ? GM_info.script.version : 'Dev';
         const root = document.createElement('div');
         root.id = 'fotki-gallery-root';
+        
+        // --- V5.8: Apply Giant Mode class if mobile ---
+        if (this.detectMobile()) {
+            root.classList.add('fg-is-mobile');
+        }
+        // ---------------------------------------------
+
         root.innerHTML = `
             <div class="fg-header">
                 <div class="fg-header-left">
@@ -111,7 +87,7 @@ window.Fotki.App = {
                 <div style="display:flex; align-items:center">
                     <button id="fg-settings-btn" class="fg-btn fg-icon-btn" title="Nastavení">⚙</button>
                     <button id="fg-back-btn" class="fg-btn" style="display:none">← Zpět</button>
-                    <button id="fg-close-btn" class="fg-btn close">Zavřít (Esc)</button>
+                    <button id="fg-close-btn" class="fg-btn close">Zavřít</button>
                 </div>
             </div>
             
@@ -154,11 +130,11 @@ window.Fotki.App = {
                     <div class="fg-date-group">
                         <div style="flex:1">
                             <label style="font-size:10px">Od (Nejnovější)</label>
-                            <input type="date" id="fg-date-to" title="Začátek hledání (např. 2020)">
+                            <input type="date" id="fg-date-to">
                         </div>
                         <div style="flex:1">
                             <label style="font-size:10px">Do (Nejstarší)</label>
-                            <input type="date" id="fg-date-from" title="Konec hledání (např. 2010)">
+                            <input type="date" id="fg-date-from">
                         </div>
                     </div>
                     <div class="fg-btn-row">
@@ -181,6 +157,7 @@ window.Fotki.App = {
             </div>
         `;
         
+        // ... (Events binding - standard) ...
         root.querySelector('#fg-close-btn').onclick = () => this.close();
         root.querySelector('#fg-back-btn').onclick = () => this.goBack();
         root.querySelector('#fg-stop-btn').onclick = () => { this.stopRequested = true; };
@@ -204,7 +181,6 @@ window.Fotki.App = {
             }
         };
 
-        // Settings Handlers
         root.querySelector('#fg-opt-group').onchange = (e) => { 
             U.saveSettings({ groupByUser: e.target.checked }); 
             this.forceRefresh(); 
@@ -225,8 +201,8 @@ window.Fotki.App = {
         };
 
         root.querySelector('#fg-date-go').onclick = () => {
-            const dStop = root.querySelector('#fg-date-from').value; // Oldest
-            const dStart = root.querySelector('#fg-date-to').value; // Newest
+            const dStop = root.querySelector('#fg-date-from').value; 
+            const dStart = root.querySelector('#fg-date-to').value; 
             this.startTimeTravel(dStop, dStart);
             setPanel.classList.remove('active');
         };
@@ -241,7 +217,12 @@ window.Fotki.App = {
 
     buildLightbox: function() { 
         const lb = document.createElement('div'); 
-        lb.id = 'fg-lightbox'; 
+        lb.id = 'fg-lightbox';
+        
+        // --- V5.8: Mobile check for lightbox class ---
+        if (this.detectMobile()) lb.classList.add('fg-is-mobile');
+        // --------------------------------------------
+
         lb.innerHTML = `
             <div class="fg-lb-canvas" id="fg-lb-canvas">
                 <img id="fg-lb-img" src="">
@@ -258,21 +239,10 @@ window.Fotki.App = {
         `; 
         const imgEl = lb.querySelector('#fg-lb-img'); 
         lb.querySelector('.fg-lb-close').onclick = () => this.closeLightbox(); 
-        lb.querySelector('.fg-lb-prev').onclick = (e) => { 
-            e.stopPropagation(); 
-            this.changeImage(-1); 
-        }; 
-        lb.querySelector('.fg-lb-next').onclick = (e) => { 
-            e.stopPropagation(); 
-            this.changeImage(1); 
-        }; 
-        imgEl.onclick = (e) => { 
-            e.stopPropagation(); 
-            window.Fotki.Lightbox.toggleZoom(e); 
-        }; 
-        lb.querySelector('.fg-lb-canvas').onclick = (e) => { 
-            if(e.target.id === 'fg-lb-canvas') this.closeLightbox(); 
-        }; 
+        lb.querySelector('.fg-lb-prev').onclick = (e) => { e.stopPropagation(); this.changeImage(-1); }; 
+        lb.querySelector('.fg-lb-next').onclick = (e) => { e.stopPropagation(); this.changeImage(1); }; 
+        imgEl.onclick = (e) => { e.stopPropagation(); window.Fotki.Lightbox.toggleZoom(e); }; 
+        lb.querySelector('.fg-lb-canvas').onclick = (e) => { if(e.target.id === 'fg-lb-canvas') this.closeLightbox(); }; 
         document.body.appendChild(lb); 
     },
 
@@ -285,25 +255,19 @@ window.Fotki.App = {
             const isRight = (e.key === 'ArrowRight' || e.keyCode === 39); 
             
             if (self.isLightboxOpen) { 
-                if (isEsc) { 
-                    e.preventDefault(); 
-                    e.stopPropagation(); 
-                    self.closeLightbox(); 
-                } 
+                if (isEsc) { e.preventDefault(); e.stopPropagation(); self.closeLightbox(); } 
                 else if (isLeft) self.changeImage(-1); 
                 else if (isRight) self.changeImage(1); 
                 return; 
             } 
             
             if (isEsc) { 
-                e.preventDefault(); 
-                e.stopPropagation(); 
+                e.preventDefault(); e.stopPropagation(); 
                 if (document.querySelector('#fg-settings-panel.active')) { 
                     document.querySelector('#fg-settings-panel').classList.remove('active'); 
                     return; 
                 } 
-                const U = window.Fotki.Utils; 
-                if (self.viewState === 'photos' && U.settings.groupByUser) { 
+                if (self.viewState === 'photos' && window.Fotki.Utils.settings.groupByUser) { 
                     self.goBack(); 
                 } else { 
                     self.close(); 
@@ -313,7 +277,6 @@ window.Fotki.App = {
     },
 
     // --- Core Logic ---
-
     isSafeUrl: function(url) { 
         const U = window.Fotki.Utils; 
         if (!U.settings || !Array.isArray(U.settings.deadHosts)) return true; 
@@ -917,9 +880,10 @@ window.Fotki.App = {
     },
 
     closeLightbox: function() { 
-        document.getElementById('fg-lightbox').style.display = 'none'; 
-        this.isLightboxOpen = false; 
-        window.Fotki.Lightbox.resetZoom(); 
+        document.getElementById('fotki-gallery-root').style.display = 'none'; 
+        document.querySelector('#fg-settings-panel').classList.remove('active'); 
+        document.body.style.overflow = ''; 
+        this.isOpen = false; 
     },
 
     changeImage: function(direction) { 
@@ -956,9 +920,6 @@ window.Fotki.App = {
         const root = document.getElementById('fotki-gallery-root'); 
         const U = window.Fotki.Utils; 
         
-        // Dynamic Mobile Viewport Toggle
-        this.toggleViewport(true);
-        
         root.style.display = 'flex'; 
         document.body.style.overflow = 'hidden'; 
         self.isOpen = true; 
@@ -987,9 +948,6 @@ window.Fotki.App = {
     },
 
     close: function() { 
-        // Restore Desktop Viewport
-        this.toggleViewport(false);
-        
         document.getElementById('fotki-gallery-root').style.display = 'none'; 
         document.querySelector('#fg-settings-panel').classList.remove('active'); 
         document.body.style.overflow = ''; 
