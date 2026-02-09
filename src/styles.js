@@ -2,7 +2,6 @@ window.Fotki = window.Fotki || {};
 
 window.Fotki.styles = `
     /* --- DESKTOP / BASE STYLES --- */
-    /* (Standard sizes for mouse/desktop users) */
 
     .head .menu a.gallery-toggle { cursor: pointer; margin-left: 10px; }
     #fotki-gallery-root { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(15, 15, 20, 0.98); z-index: 99900; display: none; flex-direction: column; font-family: sans-serif; font-size: 14px; }
@@ -48,34 +47,53 @@ window.Fotki.styles = `
 
     /* Grids */
     .fg-user-grid, .fg-photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; max-width: 1600px; margin: 0 auto; }
-    .fg-user-card, .fg-photo-card { background: #222; border: 1px solid #333; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; }
+    
+    .fg-user-card, .fg-photo-card { 
+        background: #222; border: 1px solid #333; border-radius: 4px; 
+        overflow: hidden; display: flex; flex-direction: column; 
+        transition: transform 0.2s, border-color 0.2s; /* Smooth hover */
+    }
+    /* Hover Effect Restored */
+    .fg-user-card:hover, .fg-photo-card:hover { 
+        transform: translateY(-3px); 
+        border-color: #d35400; 
+    }
+
     .fg-user-thumb { height: 120px; position: relative; }
     .fg-user-thumb img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
     .fg-user-count { position: absolute; top: 5px; right: 5px; background: #d35400; color: white; padding: 2px 6px; font-size: 10px; border-radius: 10px; }
     .fg-user-info { padding: 8px; text-align: center; border-top: 1px solid #333; }
+    
+    /* User Color Restored */
+    .fg-user-name { font-weight: bold; color: #eee; display: block; font-size: 13px; }
+    
     .fg-photo-box { height: 220px; background: #111; display: flex; align-items: center; justify-content: center; cursor: zoom-in; }
     .fg-photo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
     .fg-photo-meta { padding: 6px 10px; font-size: 11px; color: #777; border-top: 1px solid #222; display: flex; justify-content: space-between; }
+    
+    /* Photo User Color Restored */
     .fg-photo-user { color: #d35400; font-weight: bold; margin-right: 5px; }
+    
     .fg-link { color: #666; text-decoration: none; padding: 0 5px; }
+    .fg-link:hover { color: #fff; background: #d35400; border-radius: 3px; }
 
     /* Lightbox */
     #fg-lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 99950; display: none; flex-direction: column; }
     .fg-lb-canvas { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-    .fg-lb-canvas img { max-width: 95%; max-height: 95%; object-fit: contain; cursor: zoom-in; transition: transform 0.1s; }
+    .fg-lb-canvas img { max-width: 95%; max-height: 95%; object-fit: contain; box-shadow: 0 0 20px rgba(0,0,0,0.5); cursor: zoom-in; transition: transform 0.1s; }
     .fg-lb-canvas img.lb-zoomed { cursor: zoom-out; max-width: none; max-height: none; position: absolute; top:0; left:0; }
     .fg-lb-controls { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
     .fg-lb-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 50px; height: 80px; background: rgba(50,50,50,0.5); color: #fff; border: none; font-size: 30px; cursor: pointer; pointer-events: auto; }
     .fg-lb-prev { left: 0; } .fg-lb-next { right: 0; }
     .fg-lb-close { position: absolute; top: 20px; right: 20px; width: 40px; height: 40px; background: rgba(50,50,50,0.5); color: #fff; border: none; font-size: 24px; cursor: pointer; pointer-events: auto; border-radius: 50%; }
+    .fg-lb-close:hover { background: #c0392b; }
     .fg-lb-footer { height: 50px; background: #000; border-top: 1px solid #222; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; color: #888; font-size: 13px; z-index: 10; }
     .fg-lb-link { color: #d35400; text-decoration: none; }
 
-    /* --- MOBILE "GIANT MODE" OVERRIDES --- */
-    /* Applied when userAgent is mobile to counteract desktop zoom */
+    /* --- MOBILE "GIANT MODE" --- */
     .fg-is-mobile .fg-header { height: 100px; padding: 0 20px; }
     .fg-is-mobile .fg-title { font-size: 32px; }
-    .fg-is-mobile .fg-breadcrumbs { display: none; } /* Hide crumbs */
+    .fg-is-mobile .fg-breadcrumbs { display: none; } 
     .fg-is-mobile .fg-btn { padding: 15px 25px; font-size: 26px; border-radius: 8px; margin-left: 10px; }
     .fg-is-mobile .fg-icon-btn { padding: 10px 20px; font-size: 40px; }
 
@@ -92,13 +110,8 @@ window.Fotki.styles = `
     .fg-is-mobile .fg-action-btn, .fg-is-mobile .fg-reset-btn { font-size: 24px; padding: 20px; }
     .fg-is-mobile .fg-btn-row { gap: 20px; margin-top: 20px; }
 
-    /* Giant Grid */
     .fg-is-mobile .fg-user-grid, 
-    .fg-is-mobile .fg-photo-grid { 
-        /* Force 2 columns on a ~980px virtual screen -> ~480px cols */
-        grid-template-columns: 1fr 1fr; 
-        gap: 15px; padding: 10px;
-    }
+    .fg-is-mobile .fg-photo-grid { grid-template-columns: 1fr 1fr; gap: 15px; padding: 10px; }
     .fg-is-mobile .fg-photo-box { height: 400px; }
     .fg-is-mobile .fg-user-thumb { height: 300px; }
     .fg-is-mobile .fg-photo-meta { font-size: 20px; padding: 15px; }
@@ -110,7 +123,6 @@ window.Fotki.styles = `
     .fg-is-mobile #fg-loader { top: 100px; font-size: 24px; }
     .fg-is-mobile .fg-spinner { width: 80px; height: 80px; border-width: 6px; }
 
-    /* Giant Lightbox Controls */
     .fg-is-mobile .fg-lb-btn { width: 120px; height: 200px; font-size: 80px; background: rgba(0,0,0,0.2); }
     .fg-is-mobile .fg-lb-close { width: 100px; height: 100px; font-size: 60px; top: 20px; right: 20px; }
     .fg-is-mobile .fg-lb-footer { height: auto; padding: 30px; flex-direction: column; gap: 15px; font-size: 24px; text-align: center; }
