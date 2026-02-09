@@ -20,20 +20,18 @@ window.Fotki.App = {
     // Time Travel State
     dateLimitMin: null, // "Stop" Date (Oldest)
     dateLimitMax: null, // "Start" Date (Newest)
-    isSeeking: false,   // Mode: true = fast forwarding, false = scraping photos
+    isSeeking: false,
+    stopRequested: false, // Emergency stop flag
 
     // Trusted for retry
     trustedHosts: [
-        'peklo.biz',
-        'opu.peklo.biz',
-        'pic.peklo.biz',
-        'flickr.com',
-        'static.flickr.com'
+        'peklo.biz', 'opu.peklo.biz', 'pic.peklo.biz', 'flickr.com', 'static.flickr.com'
     ],
 
     init: function() {
         const U = window.Fotki.Utils;
         
+        // Inject Styles safely
         if (window.Fotki.styles) {
             if (typeof GM_addStyle !== 'undefined') {
                 GM_addStyle(window.Fotki.styles);
@@ -81,6 +79,11 @@ window.Fotki.App = {
                 </div>
             </div>
             
+            <div id="fg-status-bar">
+                <div class="fg-status-text" id="fg-status-msg">Připraveno.</div>
+                <button id="fg-stop-btn" class="fg-stop-btn">⏹ STOP & ZOBRAZIT</button>
+            </div>
+            
             <div id="fg-settings-panel">
                 <div class="fg-setting-row fg-checkbox-row">
                     <label for="fg-opt-group">Sdružovat podle uživatelů</label>
@@ -110,14 +113,21 @@ window.Fotki.App = {
                 <hr style="border:0; border-top:1px solid #444; margin: 15px 0;">
                 
                 <div class="fg-setting-row">
-                    <label>Časové období (Od - Do)</label>
+                    <label>Časové období</label>
+                    <div style="font-size:11px; color:#777; margin-bottom:5px;">Hledat fotky mezi těmito daty:</div>
                     <div class="fg-date-group">
-                        <input type="date" id="fg-date-from" title="Stop (Nejstarší)">
-                        <input type="date" id="fg-date-to" title="Start (Nejnovější)">
+                        <div style="flex:1">
+                            <label style="font-size:10px">Od (Nejnovější)</label>
+                            <input type="date" id="fg-date-to" title="Začátek hledání (např. 2020)">
+                        </div>
+                        <div style="flex:1">
+                            <label style="font-size:10px">Do (Nejstarší)</label>
+                            <input type="date" id="fg-date-from" title="Konec hledání (např. 2010)">
+                        </div>
                     </div>
                     <div class="fg-btn-row">
                         <button id="fg-date-go" class="fg-action-btn">Načíst období</button>
-                        <button id="fg-date-reset" class="fg-reset-btn" title="Zpět do současnosti">Reset</button>
+                        <button id="fg-date-reset" class="fg-reset-btn" title="Zrušit filtr">Reset</button>
                     </div>
                 </div>
                 <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #333; text-align: right; color: #555; font-size: 10px;">
@@ -137,6 +147,7 @@ window.Fotki.App = {
         
         root.querySelector('#fg-close-btn').onclick = () => this.close();
         root.querySelector('#fg-back-btn').onclick = () => this.goBack();
+        root.querySelector('#fg-stop-btn').onclick = () => { this.stopRequested = true; };
         
         const setBtn = root.querySelector('#fg-settings-btn');
         const setPanel = root.querySelector('#fg-settings-panel');
@@ -157,29 +168,16 @@ window.Fotki.App = {
             }
         };
 
-        root.querySelector('#fg-opt-group').onchange = (e) => {
-            U.saveSettings({ groupByUser: e.target.checked });
-            this.forceRefresh();
-        };
-        root.querySelector('#fg-opt-sort').onchange = (e) => {
-            U.saveSettings({ sortOrder: e.target.value });
-            this.forceRefresh();
-        };
-        root.querySelector('#fg-opt-batch').onchange = (e) => {
-            let val = parseInt(e.target.value, 10);
-            if (val < 10) val = 10;
-            U.saveSettings({ batchSize: val });
-        };
-        root.querySelector('#fg-opt-blacklist').onchange = (e) => {
-            const raw = e.target.value;
-            const list = raw.split('\n').map(s => s.trim()).filter(s => s.length > 0);
-            U.saveSettings({ deadHosts: list });
-        };
+        // Settings Handlers
+        root.querySelector('#fg-opt-group').onchange = (e) => { U.saveSettings({ groupByUser: e.target.checked }); this.forceRefresh(); };
+        root.querySelector('#fg-opt-sort').onchange = (e) => { U.saveSettings({ sortOrder: e.target.value }); this.forceRefresh(); };
+        root.querySelector('#fg-opt-batch').onchange = (e) => { let val = parseInt(e.target.value, 10); if (val < 10) val = 10; U.saveSettings({ batchSize: val }); };
+        root.querySelector('#fg-opt-blacklist').onchange = (e) => { const raw = e.target.value; const list = raw.split('\n').map(s => s.trim()).filter(s => s.length > 0); U.saveSettings({ deadHosts: list }); };
 
         root.querySelector('#fg-date-go').onclick = () => {
-            const dFrom = root.querySelector('#fg-date-from').value;
-            const dTo = root.querySelector('#fg-date-to').value;
-            this.startTimeTravel(dFrom, dTo);
+            const dStop = root.querySelector('#fg-date-from').value; // Oldest
+            const dStart = root.querySelector('#fg-date-to').value; // Newest
+            this.startTimeTravel(dStop, dStart);
             setPanel.classList.remove('active');
         };
         
@@ -254,7 +252,6 @@ window.Fotki.App = {
     isSafeUrl: function(url) {
         const U = window.Fotki.Utils;
         if (!U.settings || !Array.isArray(U.settings.deadHosts)) return true; 
-
         for (const host of U.settings.deadHosts) {
             if (url.includes(host)) return false;
         }
@@ -309,16 +306,6 @@ window.Fotki.App = {
         }
     },
 
-    resetData: function() {
-        this.groupedData = {};
-        this.allItems = [];
-        this.seenUrls.clear(); 
-        this.nextPageUrl = null;
-        this.dateLimitMin = null;
-        this.dateLimitMax = null;
-        this.isSeeking = false;
-    },
-    
     getOpuThumb: function(url) {
         if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) {
             const parts = url.split('/');
@@ -328,30 +315,71 @@ window.Fotki.App = {
         return url;
     },
 
-    // --- Time Travel Engine ---
+    resetData: function() {
+        this.groupedData = {};
+        this.allItems = [];
+        this.seenUrls.clear(); 
+        this.nextPageUrl = null;
+        this.dateLimitMin = null;
+        this.dateLimitMax = null;
+        this.isSeeking = false;
+        this.stopRequested = false;
+        document.getElementById('fg-status-msg').innerText = "Připraveno.";
+    },
+    
+    updateStatus: function(text) {
+        document.getElementById('fg-status-msg').innerText = text;
+    },
 
-    startTimeTravel: function(dateFrom, dateTo) {
-        this.dateLimitMin = dateFrom ? new Date(dateFrom).getTime() : null;
-        this.dateLimitMax = dateTo ? new Date(dateTo).getTime() : null;
-        
+    toggleStatusBar: function(show) {
+        const bar = document.getElementById('fg-status-bar');
+        const root = document.getElementById('fotki-gallery-root');
+        if (show) {
+            bar.classList.add('active');
+            root.classList.add('fg-with-status');
+        } else {
+            bar.classList.remove('active');
+            root.classList.remove('fg-with-status');
+        }
+    },
+
+    startTimeTravel: function(dateStop, dateStart) {
         const U = window.Fotki.Utils;
+        
+        let tsStart = dateStart ? new Date(dateStart).getTime() : null;
+        let tsStop = dateStop ? new Date(dateStop).getTime() : null;
+
+        // Auto-swap if user confused From/To
+        if (tsStart && tsStop && tsStart < tsStop) {
+            console.log("Fotki: Dates swapped by user. Fixing...");
+            const temp = tsStart;
+            tsStart = tsStop;
+            tsStop = temp;
+        }
+
+        this.dateLimitMax = tsStart;
+        this.dateLimitMin = tsStop;
+        
+        // Start from current page
+        let startUrl = window.location.href.split('?')[0]; 
+        
         U.showLoader();
-        this.resetData();
+        this.resetData(); 
         
         // Restore limits after reset
-        this.dateLimitMin = dateFrom ? new Date(dateFrom).getTime() : null;
-        this.dateLimitMax = dateTo ? new Date(dateTo).getTime() : null;
-        
-        // Start from current page (usually "Now")
-        this.nextPageUrl = window.location.href.split('?')[0]; 
+        this.dateLimitMax = tsStart;
+        this.dateLimitMin = tsStop;
         
         if (this.dateLimitMax) {
-            this.isSeeking = true; // Engage Turbo Mode
-            console.log(`🚀 Time Travel: Scanning back to ${new Date(this.dateLimitMax).toLocaleDateString()}...`);
+            this.isSeeking = true;
+            this.toggleStatusBar(true);
+            this.updateStatus(`⏳ Cestuji v čase do ${new Date(this.dateLimitMax).toLocaleDateString()}...`);
         } else {
             this.isSeeking = false;
+            this.toggleStatusBar(false);
         }
         
+        this.nextPageUrl = startUrl; 
         this.loadMore(true); 
     },
 
@@ -360,9 +388,10 @@ window.Fotki.App = {
         document.getElementById('fg-date-from').value = '';
         document.getElementById('fg-date-to').value = '';
         
-        console.log("🔄 Resetting Time Travel to Present.");
         U.showLoader();
         this.resetData();
+        this.toggleStatusBar(false);
+        
         this.nextPageUrl = window.location.href.split('?')[0];
         this.loadMore(true);
     },
@@ -375,21 +404,18 @@ window.Fotki.App = {
         return null;
     },
 
-    // --- Smart Navigation (The "Fast Rewind" Logic) ---
     findNextPage: function(doc) {
         const self = this;
         
-        // 1. SEEKING MODE: Find the oldest possible link to jump fast
+        // 1. SEEKING MODE (Fast Jump)
         if (self.isSeeking && self.dateLimitMax) {
             let bestLink = null;
             let bestLinkTs = 0;
-            
             const pagerLinks = doc.querySelectorAll('.pager a');
+            
             pagerLinks.forEach(link => {
                 const linkTs = self.parseUrlDate(link.href);
                 if (linkTs) {
-                    // Logic: We want a link that is >= Target (so we don't overshoot),
-                    // but as small (old) as possible to move fast.
                     if (linkTs >= self.dateLimitMax) {
                         if (bestLink === null || linkTs < bestLinkTs) {
                             bestLink = link.href;
@@ -399,9 +425,7 @@ window.Fotki.App = {
                 }
             });
             
-            // Compare "Fast Link" vs "Older Button"
             let olderBtn = doc.querySelector('.pager .older a');
-            // Fallback for dot pagination
             if (!olderBtn) {
                 for(let l of pagerLinks) {
                     if (l.innerText.includes('Starší') || l.innerText.trim() === '>' || l.innerText.trim() === '›') olderBtn = l;
@@ -410,14 +434,12 @@ window.Fotki.App = {
             
             let olderBtnTs = olderBtn ? self.parseUrlDate(olderBtn.href) : 0;
 
-            // If the Numbered Link gets us closer (is older) than the generic "Older" button, use it!
             if (bestLink && olderBtnTs && bestLinkTs < olderBtnTs) {
-                console.log(`⏩ Fast Jump: ${new Date(bestLinkTs).toLocaleDateString()}`);
                 return bestLink;
             }
         }
 
-        // 2. STANDARD MODE (Or if Fast Jump failed): Use "Older" button
+        // 2. STANDARD MODE
         let el = doc.querySelector('.pager .older a');
         if (el) return el.href;
         
@@ -440,36 +462,40 @@ window.Fotki.App = {
 
         const posts = doc.querySelectorAll('.listing .item');
 
+        // First pass: Determine page range
+        posts.forEach(post => {
+            const dateEl = post.querySelector('.permalink a.date');
+            const dateText = dateEl ? dateEl.innerText.trim() : '';
+            const timestamp = U.parseCzechDate(dateText);
+            if (timestamp > 0) {
+                if (newestOnPage === 0 || timestamp > newestOnPage) newestOnPage = timestamp;
+                if (oldestOnPage === 0 || timestamp < oldestOnPage) oldestOnPage = timestamp;
+            }
+        });
+
+        // Did we reach target?
+        if (this.isSeeking && this.dateLimitMax) {
+            if (oldestOnPage > 0 && oldestOnPage <= this.dateLimitMax) {
+                this.isSeeking = false;
+                this.updateStatus(`🎯 Nalezeno! Skenuji od ${new Date(this.dateLimitMax).toLocaleDateString()}...`);
+            }
+        }
+
+        // Second pass: Collect
         posts.forEach(post => {
             const dateEl = post.querySelector('.permalink a.date');
             const dateText = dateEl ? dateEl.innerText.trim() : '';
             const timestamp = U.parseCzechDate(dateText);
 
-            if (timestamp > 0) {
-                if (newestOnPage === 0 || timestamp > newestOnPage) newestOnPage = timestamp;
-                if (oldestOnPage === 0 || timestamp < oldestOnPage) oldestOnPage = timestamp;
-            }
+            if (this.isSeeking) return; // Don't collect while rewinding
 
-            // --- STATE CHECK: Did we arrive? ---
-            if (this.isSeeking && this.dateLimitMax) {
-                // If the target date is WITHIN this page's range (or page is OLDER than target)
-                // We have arrived. Stop seeking, start scraping.
-                if (timestamp <= this.dateLimitMax) {
-                    this.isSeeking = false;
-                    console.log(`🎯 Target Reached (${new Date(timestamp).toLocaleDateString()})! Switching to Gallery Mode.`);
-                }
-            }
-
-            // SKIP if Seeking
-            if (this.isSeeking) return;
-
-            // STOP if too old (User's "Stop" date)
+            // STOP if too old
             if (this.dateLimitMin && timestamp > 0 && timestamp < this.dateLimitMin) {
                 stopSignal = true;
-                return; 
+                return;
             }
 
-            // SKIP if "Future Debris" (Leftovers from previous pages)
+            // SKIP if too new (debris)
             if (this.dateLimitMax && timestamp > 0 && timestamp > (this.dateLimitMax + 86400000)) {
                 return; 
             }
@@ -529,29 +555,35 @@ window.Fotki.App = {
         self.isFetching = true;
         
         const btn = document.querySelector('.fg-load-more-btn');
-        if(btn) {
-            btn.textContent = "Načítám...";
-            btn.disabled = true;
-        }
+        if(btn) { btn.textContent = "Načítám..."; btn.disabled = true; }
 
         const targetCount = U.settings.batchSize;
-        const MAX_PAGES_LIMIT = 500; // Allow deep history scan
+        const MAX_PAGES = (self.dateLimitMin || self.isSeeking) ? 1000 : 50; 
         
         let loadedPhotos = 0;
         let pagesFetched = 0;
         let stopLoading = false;
 
         try {
-            while (loadedPhotos < targetCount && pagesFetched < MAX_PAGES_LIMIT && self.nextPageUrl && !stopLoading) {
+            while (loadedPhotos < targetCount && pagesFetched < MAX_PAGES && self.nextPageUrl && !stopLoading) {
                 
-                if (self.isSeeking) {
-                    if (btn) btn.textContent = `⏳ Cestuji v čase... (${pagesFetched} skoků)`;
-                } else if (pagesFetched > 0) {
-                    if (btn) btn.textContent = `Hledám fotky... (${pagesFetched})`;
-                    await new Promise(r => setTimeout(r, 500));
+                if (self.stopRequested) {
+                    console.log("🛑 Stop requested by user.");
+                    stopLoading = true;
+                    self.nextPageUrl = null;
+                    break;
                 }
 
-                // console.log(`Fetch: ${self.nextPageUrl}`);
+                if (self.isSeeking) {
+                    // Fast Rewind UI
+                    if(btn) btn.textContent = `⏳ Cestuji v čase...`;
+                } else {
+                    // Scanning UI
+                    if (pagesFetched > 0) await new Promise(r => setTimeout(r, 500));
+                    self.updateStatus(`📷 Skenuji... nalezeno: ${self.allItems.length} fotek`);
+                    if(btn) btn.textContent = `Hledám... (${self.allItems.length})`;
+                }
+
                 const response = await fetch(self.nextPageUrl);
                 if (!response.ok) throw new Error('Server status: ' + response.status);
 
@@ -565,16 +597,10 @@ window.Fotki.App = {
 
                 const result = self.extractData(newDoc);
                 
-                // Edge Case: End of History (No older link found)
+                // End of History Check
                 if (!result.nextLink && self.isSeeking && result.oldestOnPage > 0) {
-                    // We hit the end, and we are still seeking. 
-                    // This means target date < oldest post (e.g. 2007-01-01 < 2007-12-11).
-                    // STOP seeking and show what we have.
                     self.isSeeking = false;
-                    console.log("🛑 End of History reached. Stopping search.");
-                    
-                    // Re-scan this last page to capture photos now that Seeking is off
-                    self.extractData(newDoc); 
+                    self.extractData(newDoc); // Re-scan current page to capture items
                 }
 
                 if (result.stopSignal) {
@@ -591,20 +617,22 @@ window.Fotki.App = {
             self.refreshView();
 
         } catch (e) {
-            console.error('Fotki: Error loading more', e);
-            if(btn) {
-                btn.textContent = "Chyba (zkusit znovu)";
-                btn.disabled = false;
-                self.isFetching = false;
-                return;
-            }
+            console.error('Fotki: Error', e);
+            if(btn) { btn.textContent = "Chyba (zkusit znovu)"; btn.disabled = false; }
         } finally {
             self.isFetching = false;
             U.hideLoader();
             
+            // If stopped, keep the count in status bar
+            if (self.stopRequested) {
+                self.updateStatus(`🛑 Zastaveno. Nalezeno ${self.allItems.length} fotek.`);
+            } else if (!self.nextPageUrl) {
+                self.updateStatus(`✅ Hotovo. Celkem ${self.allItems.length} fotek.`);
+            }
+
             const freshBtn = document.querySelector('.fg-load-more-btn');
             if (freshBtn) {
-                if (self.nextPageUrl) {
+                if (self.nextPageUrl && !self.stopRequested) {
                     freshBtn.textContent = 'Načíst starší';
                     freshBtn.disabled = false;
                 } else {
