@@ -1,64 +1,38 @@
-# 📸 Fotki pro Okoun.cz
-# ignorujte hop hej tón, píše mi to gemini
-# Stroj času (Historie) je taková zdá se zabugovaná, používejte na vlastní nebezpečí
+# Fotki pro Okoun.cz
 
-Userscript, který promění libovolný diskusní klub na [Okoun.cz](https://www.okoun.cz) v moderní, přehlednou galerii. Nyní funguje na celém serveru!
+Jednoduchý doplněk (userscript), který promění prohlížení fotek na diskuzním serveru Okoun.cz v moderní galerii.
 
----
+## 🚀 Jak nainstalovat
 
-## 📥 Jak to nainstalovat
+### 1. Nainstaluj si správce skriptů do prohlížeče
+Aby to fungovalo, potřebuješ jedno z těchto rozšíření:
 
-Aby skript fungoval, musíte mít v prohlížeči nainstalovaný tzv. **správce skriptů**. Je to bezpečný doplněk, který umožňuje upravovat vzhled stránek.
+* **Chrome / Edge / Brave:** [Tampermonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)
+* **Firefox:** [Tampermonkey](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) nebo [Violentmonkey](https://addons.mozilla.org/en-US/firefox/addon/violentmonkey/)
+* **Safari:** [Tampermonkey](https://apps.apple.com/us/app/tampermonkey/id1482490089)
 
-### 1. Krok: Nainstalujte si doplněk (pokud nemáte)
-Vyberte si podle svého prohlížeče:
-* **Chrome, Edge, Brave:** 🐵 **[Tampermonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)** nebo **[Violentmonkey](https://violentmonkey.github.io/)**
-* **Firefox:** 🦊 **[Tampermonkey](https://addons.mozilla.org/cs/firefox/addon/tampermonkey/)**
-* **Safari:** 🧭 **[Userscripts](https://github.com/quoid/userscripts)** (zdarma, open-source)
+### 2. Nainstaluj skript
+Po instalaci rozšíření klikni na tento odkaz a potvrď instalaci tlačítkem **Install**:
 
-### 2. Krok: Nainstalujte Fotki
-Jakmile máte doplněk, klikněte na tento odkaz. Prohlížeč se vás zeptá, zda chcete skript nainstalovat – potvrďte to.
-
-👉 **[NAINSTALOVAT SKRIPT (v4.5)](https://github.com/hanenashi/fotki/raw/main/fotki.user.js)**
+👉 **[NAINSTALOVAT SKRIPT (fotki.user.js)](https://github.com/hanenashi/fotki/raw/main/fotki.user.js)**
 
 ---
 
-## ✨ Funkce
+## 🎮 Jak to funguje
 
-### 🌍 Funguje všude
-Tlačítko **`[ FOTKY ]`** se nyní zobrazuje v záhlaví každého klubu (Politika, Vztahy, Kočky...). Galerie se automaticky přizpůsobí aktuálnímu klubu.
+### 🖼️ Galerie
+Po instalaci uvidíš v horním menu Okouna nové tlačítko **"Fotki"**.
+* Kliknutím se otevře tmavá galerie přes celou obrazovku.
+* Fotky se načítají automaticky (nekonečné scrollování).
+* Kliknutím na fotku otevřeš detail (Lightbox).
+* **Zoom:** V detailu stačí hýbat myší po obrázku pro detailní přiblížení.
 
-### 📂 Chytré sdružování
-Místo procházení stovek příspěvků skript automaticky seskupí fotky do **"složek" podle autorů**. Hned vidíte, kdo nahrál kolik fotek.
+### ⏳ Cestování časem (Time Travel)
+Chceš vidět fotky z roku 2008? Nemusíš klikat 1000x na "Starší".
+1.  Otevři Galerii a klikni na **ozubené kolo (⚙️)** vpravo nahoře.
+2.  Do políčka **"Do (Nejstarší)"** zadej datum (např. `1.1.2008`).
+3.  Klikni na **"Načíst období"**.
+4.  Skript automaticky "prolétne" historií dozadu a začne ti servírovat fotky z té doby.
 
-### 🖼️ Lightbox Galerie
-Kliknutím na fotku otevřete **celoobrazovkový prohlížeč** (lightbox):
-* **Zoom myší:** Najeďte na fotku pro okamžité zvětšení detailů.
-* **Navigace:** Listujte pomocí šipek na klávesnici (`←` / `→`).
-* **Rychlé zavření:** Klávesa `Esc` zavře náhled.
-
-### ⏳ Stroj času (Historie)
-Umí prohledat hlubokou historii klubu (testováno až do roku 2007).
-* **Filtr data:** V nastavení zadejte "Od - Do" a skript najde fotky z té doby.
-* **Neúnavné načítání:** Skript automaticky přeskakuje stránky bez fotek ("kecací" období), dokud nenajde obrázky.
-* **Reset:** Červené tlačítko Reset vás okamžitě vrátí do současnosti.
-
-### 🛡️ Stabilita a Čištění
-* **Mrtvé linky:** Automaticky skrývá obrázky z mrtvých serverů (Tinypic, starý FB), takže galerie je čistá.
-* **Duplicity:** Inteligentně odstraňuje duplicitní fotky, které vznikají překryvem stránek na Okounovi.
-* **Ochrana:** "Jemné" načítání historie s pauzami, aby vás server neodpojil.
-
----
-
-## ⚙️ Pokročilé Nastavení
-V horní liště galerie najdete ikonu ozubeného kola `⚙`:
-* **Editor Blacklistu:** Můžete sami přidávat nebo mazat domény, které nechcete vidět.
-* **Dávkování:** Nastavte si, kolik fotek se má načíst na jedno kliknutí.
-* **Sdružování:** Přepínač pro zobrazení podle uživatelů nebo plochý seznam.
-
----
-
-## 🚀 Jak to použít
-1.  Jděte na jakýkoliv klub na [Okoun.cz](https://www.okoun.cz).
-2.  V horním menu (vedle "Hledat") klikněte na nové tlačítko **`[ FOTKY ]`**.
-3.  Užívejte si galerii!
+### 🛑 Tlačítko STOP
+Pokud načítání trvá moc dlouho nebo jsi našel, co jsi hledal, klikni na červené tlačítko **STOP** nahoře. Načítání se okamžitě zastaví a zobrazí se vše, co se stihlo najít.
