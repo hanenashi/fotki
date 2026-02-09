@@ -48,6 +48,7 @@ window.Fotki.App = {
         this.bindKeys();
     },
 
+    // Mobile Detection (Regex approach)
     detectMobile: function() {
         return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
     },
@@ -69,6 +70,7 @@ window.Fotki.App = {
         const root = document.createElement('div');
         root.id = 'fotki-gallery-root';
         
+        // Apply "Giant Mode" class if mobile
         if (this.detectMobile()) {
             root.classList.add('fg-is-mobile');
         }
@@ -179,7 +181,7 @@ window.Fotki.App = {
             }
         };
 
-        // V6.1: Mobile Close Button
+        // Mobile Close Button
         root.querySelector('#fg-settings-close-mobile').onclick = () => {
             setPanel.classList.remove('active');
         };

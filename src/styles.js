@@ -17,6 +17,7 @@ window.Fotki.styles = `
     .fg-btn.close:hover { background: #c0392b; border-color: #e74c3c; }
     .fg-icon-btn { padding: 4px 8px; font-size: 16px; line-height: 1; }
 
+    /* Status Bar */
     #fg-status-bar { position: absolute; top: 45px; left: 0; width: 100%; height: 40px; background: rgba(44, 62, 80, 0.95); border-bottom: 1px solid #34495e; display: none; align-items: center; justify-content: space-between; padding: 0 20px; box-sizing: border-box; color: #ecf0f1; font-size: 13px; z-index: 60; }
     #fg-status-bar.active { display: flex; }
     .fg-stop-btn { background: #c0392b; color: white; border: none; padding: 5px 15px; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px; margin-left: 10px; }
@@ -70,6 +71,7 @@ window.Fotki.styles = `
     .fg-link { color: #666; text-decoration: none; padding: 0 5px; }
     .fg-link:hover { color: #fff; background: #d35400; border-radius: 3px; }
 
+    /* Lightbox */
     #fg-lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 99950; display: none; flex-direction: column; }
     .fg-lb-canvas { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
     .fg-lb-canvas img { max-width: 95%; max-height: 95%; object-fit: contain; box-shadow: 0 0 20px rgba(0,0,0,0.5); cursor: zoom-in; transition: transform 0.1s; }
