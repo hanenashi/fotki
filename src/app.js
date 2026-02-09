@@ -48,7 +48,6 @@ window.Fotki.App = {
         this.bindKeys();
     },
 
-    // Mobile Detection (No Viewport Manipulation!)
     detectMobile: function() {
         return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
     },
@@ -70,7 +69,6 @@ window.Fotki.App = {
         const root = document.createElement('div');
         root.id = 'fotki-gallery-root';
         
-        // Apply "Giant Mode" class if mobile
         if (this.detectMobile()) {
             root.classList.add('fg-is-mobile');
         }
@@ -94,6 +92,10 @@ window.Fotki.App = {
             </div>
             
             <div id="fg-settings-panel">
+                <div class="fg-settings-close-bar">
+                    <button id="fg-settings-close-mobile" class="fg-settings-close-btn">← Zavřít nastavení</button>
+                </div>
+
                 <div class="fg-setting-row fg-checkbox-row">
                     <label for="fg-opt-group">Sdružovat podle uživatelů</label>
                     <input type="checkbox" id="fg-opt-group">
@@ -175,6 +177,11 @@ window.Fotki.App = {
                     root.querySelector('#fg-opt-blacklist').value = '';
                 }
             }
+        };
+
+        // V6.1: Mobile Close Button
+        root.querySelector('#fg-settings-close-mobile').onclick = () => {
+            setPanel.classList.remove('active');
         };
 
         root.querySelector('#fg-opt-group').onchange = (e) => { 
@@ -269,6 +276,8 @@ window.Fotki.App = {
             } 
         }, true); 
     },
+
+    // --- Core Logic ---
 
     isSafeUrl: function(url) { 
         const U = window.Fotki.Utils; 
