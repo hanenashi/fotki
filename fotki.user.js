@@ -2,7 +2,7 @@
 // @name         fotki
 // @namespace    http://tampermonkey.net/
 // @version      6.1
-// @description  Gallery with Lightbox (Mouse-Follow Zoom), Loading States & Settings
+// @description  Gallery with Lightbox (Mousse-Follow Zoom), Loading States & Settings
 // @author       kokochan
 // @match        https://www.okoun.cz/boards/*
 // @grant        GM_addStyle
