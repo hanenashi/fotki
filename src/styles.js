@@ -3,9 +3,12 @@ window.Fotki = window.Fotki || {};
 window.Fotki.styles = `
     /* --- DESKTOP / BASE STYLES --- */
 
-    /* Toggle Button */
-    .head .menu a.gallery-toggle { color: #d35400 !important; font-weight: bold; cursor: pointer; margin-left: 10px; text-decoration: none; }
-    .head .menu a.gallery-toggle:hover { color: #e67e22 !important; text-decoration: underline; }
+    /* Toggle Button - Native Look */
+    .head .menu a.gallery-toggle {
+        cursor: pointer;
+        margin-left: 10px;
+        /* Barvy a fonty dědíme z Okouna, aby to vypadalo přirozeně */
+    }
 
     /* Main Overlay */
     #fotki-gallery-root { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(15, 15, 20, 0.98); z-index: 99900; display: none; flex-direction: column; font-family: sans-serif; }
@@ -125,7 +128,7 @@ window.Fotki.styles = `
             max-height: 80vh; right: auto; 
             border: 1px solid #555; box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
-        .fg-setting-row input, .fg-setting-row select { font-size: 16px; padding: 8px; } /* Prevents iOS zoom */
+        .fg-setting-row input, .fg-setting-row select { font-size: 16px; padding: 8px; }
 
         /* Grids - 2 Column tight */
         .fg-photo-grid { grid-template-columns: repeat(auto-fill, minmax(45%, 1fr)); gap: 6px; }

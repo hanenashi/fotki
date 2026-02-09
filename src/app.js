@@ -21,11 +21,15 @@ window.Fotki.App = {
     dateLimitMin: null, // "Stop" Date (Oldest)
     dateLimitMax: null, // "Start" Date (Newest)
     isSeeking: false,
-    stopRequested: false,
+    stopRequested: false, // Emergency stop flag
 
     // Trusted for retry
     trustedHosts: [
-        'peklo.biz', 'opu.peklo.biz', 'pic.peklo.biz', 'flickr.com', 'static.flickr.com'
+        'peklo.biz', 
+        'opu.peklo.biz', 
+        'pic.peklo.biz', 
+        'flickr.com', 
+        'static.flickr.com'
     ],
 
     init: function() {
@@ -55,7 +59,10 @@ window.Fotki.App = {
         if (!menu) return;
         const btn = document.createElement('a');
         btn.className = 'gallery-toggle';
-        btn.innerHTML = '[ FOTKY ]';
+        
+        // v5.4 Change: Simple text
+        btn.textContent = 'Fotki'; 
+        
         btn.onclick = (e) => { e.preventDefault(); this.toggle(); };
         menu.appendChild(document.createTextNode(' '));
         menu.appendChild(btn);
@@ -203,9 +210,9 @@ window.Fotki.App = {
         document.body.appendChild(root);
     },
 
-    buildLightbox: function() {
-        const lb = document.createElement('div');
-        lb.id = 'fg-lightbox';
+    buildLightbox: function() { 
+        const lb = document.createElement('div'); 
+        lb.id = 'fg-lightbox'; 
         lb.innerHTML = `
             <div class="fg-lb-canvas" id="fg-lb-canvas">
                 <img id="fg-lb-img" src="">
@@ -219,114 +226,110 @@ window.Fotki.App = {
                 <div id="fg-lb-meta-text"></div>
                 <div><a id="fg-lb-post-link" href="#" target="_blank" class="fg-lb-link">Přejít k příspěvku ➜</a></div>
             </div>
-        `;
-        
-        const imgEl = lb.querySelector('#fg-lb-img');
-        lb.querySelector('.fg-lb-close').onclick = () => this.closeLightbox();
-        lb.querySelector('.fg-lb-prev').onclick = (e) => { e.stopPropagation(); this.changeImage(-1); };
-        lb.querySelector('.fg-lb-next').onclick = (e) => { e.stopPropagation(); this.changeImage(1); };
-        imgEl.onclick = (e) => { e.stopPropagation(); window.Fotki.Lightbox.toggleZoom(e); };
-        lb.querySelector('.fg-lb-canvas').onclick = (e) => { if(e.target.id === 'fg-lb-canvas') this.closeLightbox(); };
-        document.body.appendChild(lb);
+        `; 
+        const imgEl = lb.querySelector('#fg-lb-img'); 
+        lb.querySelector('.fg-lb-close').onclick = () => this.closeLightbox(); 
+        lb.querySelector('.fg-lb-prev').onclick = (e) => { e.stopPropagation(); this.changeImage(-1); }; 
+        lb.querySelector('.fg-lb-next').onclick = (e) => { e.stopPropagation(); this.changeImage(1); }; 
+        imgEl.onclick = (e) => { e.stopPropagation(); window.Fotki.Lightbox.toggleZoom(e); }; 
+        lb.querySelector('.fg-lb-canvas').onclick = (e) => { if(e.target.id === 'fg-lb-canvas') this.closeLightbox(); }; 
+        document.body.appendChild(lb); 
     },
 
-    bindKeys: function() {
-        const self = this;
-        window.addEventListener('keydown', (e) => {
-            if (!self.isOpen) return;
-            const isEsc = (e.key === 'Escape' || e.keyCode === 27);
-            const isLeft = (e.key === 'ArrowLeft' || e.keyCode === 37);
-            const isRight = (e.key === 'ArrowRight' || e.keyCode === 39);
-
-            if (self.isLightboxOpen) {
-                if (isEsc) { e.preventDefault(); e.stopPropagation(); self.closeLightbox(); }
-                else if (isLeft) self.changeImage(-1);
-                else if (isRight) self.changeImage(1);
-                return;
-            }
-
-            if (isEsc) {
-                e.preventDefault(); e.stopPropagation();
-                if (document.querySelector('#fg-settings-panel.active')) {
-                    document.querySelector('#fg-settings-panel').classList.remove('active');
-                    return;
-                }
-                const U = window.Fotki.Utils;
-                if (self.viewState === 'photos' && U.settings.groupByUser) {
-                    self.goBack();
-                } else {
-                    self.close();
-                }
-            }
-        }, true);
+    bindKeys: function() { 
+        const self = this; 
+        window.addEventListener('keydown', (e) => { 
+            if (!self.isOpen) return; 
+            const isEsc = (e.key === 'Escape' || e.keyCode === 27); 
+            const isLeft = (e.key === 'ArrowLeft' || e.keyCode === 37); 
+            const isRight = (e.key === 'ArrowRight' || e.keyCode === 39); 
+            
+            if (self.isLightboxOpen) { 
+                if (isEsc) { e.preventDefault(); e.stopPropagation(); self.closeLightbox(); } 
+                else if (isLeft) self.changeImage(-1); 
+                else if (isRight) self.changeImage(1); 
+                return; 
+            } 
+            
+            if (isEsc) { 
+                e.preventDefault(); e.stopPropagation(); 
+                if (document.querySelector('#fg-settings-panel.active')) { 
+                    document.querySelector('#fg-settings-panel').classList.remove('active'); 
+                    return; 
+                } 
+                const U = window.Fotki.Utils; 
+                if (self.viewState === 'photos' && U.settings.groupByUser) { 
+                    self.goBack(); 
+                } else { 
+                    self.close(); 
+                } 
+            } 
+        }, true); 
     },
 
     // --- Core Logic ---
 
-    isSafeUrl: function(url) {
-        const U = window.Fotki.Utils;
+    isSafeUrl: function(url) { 
+        const U = window.Fotki.Utils; 
         if (!U.settings || !Array.isArray(U.settings.deadHosts)) return true; 
-        for (const host of U.settings.deadHosts) {
-            if (url.includes(host)) return false;
-        }
-        if (url.includes('cloudfront.net') || url.includes('okoun.cz/images/')) return false;
-        return true;
+        for (const host of U.settings.deadHosts) { 
+            if (url.includes(host)) return false; 
+        } 
+        if (url.includes('cloudfront.net') || url.includes('okoun.cz/images/')) return false; 
+        return true; 
     },
 
-    isTrustedHost: function(url) {
-        for (const host of this.trustedHosts) {
-            if (url.includes(host)) return true;
-        }
-        return false;
+    isTrustedHost: function(url) { 
+        for (const host of this.trustedHosts) { 
+            if (url.includes(host)) return true; 
+        } 
+        return false; 
     },
 
-    upgradeUrl: function(url) {
-        if (url.startsWith('http://')) {
-            return url.replace('http://', 'https://');
-        }
-        return url;
+    upgradeUrl: function(url) { 
+        if (url.startsWith('http://')) { 
+            return url.replace('http://', 'https://'); 
+        } 
+        return url; 
     },
 
-    pruneItem: function(badItem) {
-        this.allItems = this.allItems.filter(i => i !== badItem);
-        if (this.groupedData[badItem.user]) {
-            this.groupedData[badItem.user] = this.groupedData[badItem.user].filter(i => i !== badItem);
-            
-            if (this.groupedData[badItem.user].length === 0) {
-                delete this.groupedData[badItem.user];
-                if (this.viewState === 'root') {
-                    const cards = Array.from(document.querySelectorAll('.fg-user-card'));
-                    const userCard = cards.find(el => el.dataset.user === badItem.user);
-                    if (userCard) userCard.remove();
-                }
-            }
-        }
+    pruneItem: function(badItem) { 
+        this.allItems = this.allItems.filter(i => i !== badItem); 
+        if (this.groupedData[badItem.user]) { 
+            this.groupedData[badItem.user] = this.groupedData[badItem.user].filter(i => i !== badItem); 
+            if (this.groupedData[badItem.user].length === 0) { 
+                delete this.groupedData[badItem.user]; 
+                if (this.viewState === 'root') { 
+                    const cards = Array.from(document.querySelectorAll('.fg-user-card')); 
+                    const userCard = cards.find(el => el.dataset.user === badItem.user); 
+                    if (userCard) userCard.remove(); 
+                } 
+            } 
+        } 
     },
 
-    recoverUserCard: function(user) {
-        if (this.viewState !== 'root') return;
-        const photos = this.groupedData[user];
-        const card = Array.from(document.querySelectorAll('.fg-user-card')).find(el => el.dataset.user === user);
-        
-        if (!card) return;
-
-        if (!photos || photos.length === 0) {
+    recoverUserCard: function(user) { 
+        if (this.viewState !== 'root') return; 
+        const photos = this.groupedData[user]; 
+        const card = Array.from(document.querySelectorAll('.fg-user-card')).find(el => el.dataset.user === user); 
+        if (!card) return; 
+        if (!photos || photos.length === 0) { 
             card.remove(); 
-        } else {
-            const img = card.querySelector('img');
+        } else { 
+            const img = card.querySelector('img'); 
             if (img) img.src = photos[0].thumb; 
-            const countEl = card.querySelector('.fg-user-count');
-            if (countEl) countEl.innerText = photos.length;
-        }
+            const countEl = card.querySelector('.fg-user-count'); 
+            if (countEl) countEl.innerText = photos.length; 
+        } 
     },
 
-    getOpuThumb: function(url) {
-        if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) {
-            const parts = url.split('/');
-            const filename = parts.pop();
-            return parts.join('/') + '/thumbs/' + filename;
-        }
-        return url;
+    getOpuThumb: function(url) { 
+        if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) { 
+            const parts = url.split('/'); 
+            const filename = parts.pop(); 
+            return parts.join('/') + '/thumbs/' + filename; 
+        } 
+        return url; 
     },
 
     resetData: function() {
@@ -363,9 +366,8 @@ window.Fotki.App = {
         let tsStart = dateStart ? new Date(dateStart).getTime() : null;
         let tsStop = dateStop ? new Date(dateStop).getTime() : null;
 
-        // Auto-swap if user confused From/To
+        // Auto-swap dates if confused
         if (tsStart && tsStop && tsStart < tsStop) {
-            console.log("Fotki: Dates swapped by user. Fixing...");
             const temp = tsStart;
             tsStart = tsStop;
             tsStop = temp;
@@ -374,7 +376,6 @@ window.Fotki.App = {
         this.dateLimitMax = tsStart;
         this.dateLimitMin = tsStop;
         
-        // Start from current page
         let startUrl = window.location.href.split('?')[0]; 
         
         U.showLoader();
@@ -388,8 +389,8 @@ window.Fotki.App = {
             this.isSeeking = true;
             this.toggleStatusBar(true);
             this.updateStatus(`⏳ Cestuji v čase do ${new Date(this.dateLimitMax).toLocaleDateString()}...`);
-            // Show stop button at start
-            document.getElementById('fg-stop-btn').style.display = 'block';
+            const stopBtn = document.getElementById('fg-stop-btn');
+            if (stopBtn) stopBtn.style.display = 'block';
         } else {
             this.isSeeking = false;
             this.toggleStatusBar(false);
@@ -432,9 +433,7 @@ window.Fotki.App = {
             pagerLinks.forEach(link => {
                 const linkTs = self.parseUrlDate(link.href);
                 if (linkTs) {
-                    // Logic: We want a link that is >= Target
                     if (linkTs >= self.dateLimitMax) {
-                        // Find oldest safe link
                         if (bestLink === null || linkTs < bestLinkTs) {
                             bestLink = link.href;
                             bestLinkTs = linkTs;
@@ -444,7 +443,6 @@ window.Fotki.App = {
             });
             
             let olderBtn = doc.querySelector('.pager .older a');
-            // Dot pagination fallback
             if (!olderBtn) {
                 for(let l of pagerLinks) {
                     if (l.innerText.includes('Starší') || l.innerText.trim() === '>' || l.innerText.trim() === '›') olderBtn = l;
@@ -453,7 +451,6 @@ window.Fotki.App = {
             
             let olderBtnTs = olderBtn ? self.parseUrlDate(olderBtn.href) : 0;
 
-            // Prefer Fast Jump if it gets us closer (is older) than the "Next" button
             if (bestLink && olderBtnTs && bestLinkTs < olderBtnTs) {
                 return bestLink;
             }
@@ -493,7 +490,6 @@ window.Fotki.App = {
             }
         });
 
-        // Did we reach target?
         if (this.isSeeking && this.dateLimitMax) {
             if (oldestOnPage > 0 && oldestOnPage <= this.dateLimitMax) {
                 this.isSeeking = false;
@@ -507,7 +503,7 @@ window.Fotki.App = {
             const dateText = dateEl ? dateEl.innerText.trim() : '';
             const timestamp = U.parseCzechDate(dateText);
 
-            if (this.isSeeking) return; // Don't collect while rewinding
+            if (this.isSeeking) return;
 
             if (this.dateLimitMin && timestamp > 0 && timestamp < this.dateLimitMin) {
                 stopSignal = true;
@@ -578,12 +574,10 @@ window.Fotki.App = {
             btn.disabled = true; 
         }
 
-        // --- V5.2 UPDATE: Always show status bar and stop button ---
         self.toggleStatusBar(true);
         const stopBtn = document.getElementById('fg-stop-btn');
         if(stopBtn) stopBtn.style.display = 'block';
         self.stopRequested = false;
-        // -----------------------------------------------------------
 
         const targetCount = U.settings.batchSize;
         const MAX_PAGES = (self.dateLimitMin || self.isSeeking) ? 1000 : 50; 
@@ -623,10 +617,9 @@ window.Fotki.App = {
 
                 const result = self.extractData(newDoc);
                 
-                // End of History Check
                 if (!result.nextLink && self.isSeeking && result.oldestOnPage > 0) {
                     self.isSeeking = false;
-                    self.extractData(newDoc); // Re-scan current page to capture items
+                    self.extractData(newDoc);
                 }
 
                 if (result.stopSignal) {
@@ -652,7 +645,8 @@ window.Fotki.App = {
             self.isFetching = false;
             U.hideLoader();
             
-            // --- V5.2 UPDATE: Clean up UI ---
+            const stopBtn = document.getElementById('fg-stop-btn');
+            
             if (self.stopRequested) {
                 self.updateStatus(`🛑 Zastaveno. Nalezeno ${self.allItems.length} fotek.`);
                 if(stopBtn) stopBtn.style.display = 'none';
@@ -660,10 +654,8 @@ window.Fotki.App = {
                 self.updateStatus(`✅ Hotovo. Celkem ${self.allItems.length} fotek.`);
                 if(stopBtn) stopBtn.style.display = 'none';
             } else if (!self.isSeeking) {
-                // If just paused (batch limit reached), hide stop but keep status
                 if(stopBtn) stopBtn.style.display = 'none';
             }
-            // --------------------------------
 
             const freshBtn = document.querySelector('.fg-load-more-btn');
             if (freshBtn) {
@@ -939,6 +931,9 @@ window.Fotki.App = {
         root.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         self.isOpen = true;
+        
+        // Reset stop flag on open
+        self.stopRequested = false;
         
         if (self.allItems.length === 0) {
             U.showLoader();
