@@ -35,7 +35,10 @@ window.Fotki.App = {
     init: function() {
         const U = window.Fotki.Utils;
         
-        // Inject Styles safely
+        // 1. MOBILE FIX: Inject Viewport Meta Tag if missing
+        this.fixViewport();
+
+        // 2. Inject Styles safely
         if (window.Fotki.styles) {
             if (typeof GM_addStyle !== 'undefined') {
                 GM_addStyle(window.Fotki.styles);
@@ -54,16 +57,31 @@ window.Fotki.App = {
         this.bindKeys();
     },
 
+    fixViewport: function() {
+        // Okoun lacks a viewport tag, causing mobile browsers to zoom out (desktop mode).
+        // We inject one to force 1:1 scaling so media queries work.
+        if (!document.querySelector('meta[name="viewport"]')) {
+            const meta = document.createElement('meta');
+            meta.name = 'viewport';
+            meta.content = 'width=device-width, initial-scale=1.0';
+            document.head.appendChild(meta);
+            console.log('Fotki: Mobile viewport injected.');
+        }
+    },
+
     injectButton: function() {
         const menu = document.querySelector('.head .nav .menu');
         if (!menu) return;
         const btn = document.createElement('a');
         btn.className = 'gallery-toggle';
         
-        // v5.4 Change: Simple text
+        // Simple text per your request
         btn.textContent = 'Fotki'; 
         
-        btn.onclick = (e) => { e.preventDefault(); this.toggle(); };
+        btn.onclick = (e) => { 
+            e.preventDefault(); 
+            this.toggle(); 
+        };
         menu.appendChild(document.createTextNode(' '));
         menu.appendChild(btn);
     },
@@ -229,10 +247,21 @@ window.Fotki.App = {
         `; 
         const imgEl = lb.querySelector('#fg-lb-img'); 
         lb.querySelector('.fg-lb-close').onclick = () => this.closeLightbox(); 
-        lb.querySelector('.fg-lb-prev').onclick = (e) => { e.stopPropagation(); this.changeImage(-1); }; 
-        lb.querySelector('.fg-lb-next').onclick = (e) => { e.stopPropagation(); this.changeImage(1); }; 
-        imgEl.onclick = (e) => { e.stopPropagation(); window.Fotki.Lightbox.toggleZoom(e); }; 
-        lb.querySelector('.fg-lb-canvas').onclick = (e) => { if(e.target.id === 'fg-lb-canvas') this.closeLightbox(); }; 
+        lb.querySelector('.fg-lb-prev').onclick = (e) => { 
+            e.stopPropagation(); 
+            this.changeImage(-1); 
+        }; 
+        lb.querySelector('.fg-lb-next').onclick = (e) => { 
+            e.stopPropagation(); 
+            this.changeImage(1); 
+        }; 
+        imgEl.onclick = (e) => { 
+            e.stopPropagation(); 
+            window.Fotki.Lightbox.toggleZoom(e); 
+        }; 
+        lb.querySelector('.fg-lb-canvas').onclick = (e) => { 
+            if(e.target.id === 'fg-lb-canvas') this.closeLightbox(); 
+        }; 
         document.body.appendChild(lb); 
     },
 
@@ -245,14 +274,19 @@ window.Fotki.App = {
             const isRight = (e.key === 'ArrowRight' || e.keyCode === 39); 
             
             if (self.isLightboxOpen) { 
-                if (isEsc) { e.preventDefault(); e.stopPropagation(); self.closeLightbox(); } 
+                if (isEsc) { 
+                    e.preventDefault(); 
+                    e.stopPropagation(); 
+                    self.closeLightbox(); 
+                } 
                 else if (isLeft) self.changeImage(-1); 
                 else if (isRight) self.changeImage(1); 
                 return; 
             } 
             
             if (isEsc) { 
-                e.preventDefault(); e.stopPropagation(); 
+                e.preventDefault(); 
+                e.stopPropagation(); 
                 if (document.querySelector('#fg-settings-panel.active')) { 
                     document.querySelector('#fg-settings-panel').classList.remove('active'); 
                     return; 
@@ -543,22 +577,22 @@ window.Fotki.App = {
         return { count, nextLink: this.findNextPage(doc), stopSignal, oldestOnPage };
     },
 
-    sortData: function() {
-        const U = window.Fotki.Utils;
-        const s = U.settings.sortOrder;
-        let sortFn;
+    sortData: function() { 
+        const U = window.Fotki.Utils; 
+        const s = U.settings.sortOrder; 
+        let sortFn; 
         
-        if (s === 'newest') sortFn = (a, b) => b.ts - a.ts;
-        else if (s === 'oldest') sortFn = (a, b) => a.ts - b.ts;
-        else if (s === 'name_asc') sortFn = (a, b) => a.user.localeCompare(b.user) || b.ts - a.ts;
-        else if (s === 'name_desc') sortFn = (a, b) => b.user.localeCompare(a.user) || b.ts - a.ts;
+        if (s === 'newest') sortFn = (a, b) => b.ts - a.ts; 
+        else if (s === 'oldest') sortFn = (a, b) => a.ts - b.ts; 
+        else if (s === 'name_asc') sortFn = (a, b) => a.user.localeCompare(b.user) || b.ts - a.ts; 
+        else if (s === 'name_desc') sortFn = (a, b) => b.user.localeCompare(a.user) || b.ts - a.ts; 
 
-        if (sortFn) this.allItems.sort(sortFn);
+        if (sortFn) this.allItems.sort(sortFn); 
         
-        const userContentSort = (a, b) => b.ts - a.ts;
-        Object.keys(this.groupedData).forEach(u => {
-            this.groupedData[u].sort(userContentSort);
-        });
+        const userContentSort = (a, b) => b.ts - a.ts; 
+        Object.keys(this.groupedData).forEach(u => { 
+            this.groupedData[u].sort(userContentSort); 
+        }); 
     },
 
     loadMore: async function(initialLoad = false) {
@@ -679,286 +713,275 @@ window.Fotki.App = {
         }
     },
 
-    forceRefresh: function() {
-        const U = window.Fotki.Utils;
-        U.showLoader();
-        setTimeout(() => {
-            this.refreshView();
-            U.hideLoader();
-        }, 10);
+    forceRefresh: function() { 
+        const U = window.Fotki.Utils; 
+        U.showLoader(); 
+        setTimeout(() => { 
+            this.refreshView(); 
+            U.hideLoader(); 
+        }, 10); 
     },
 
-    refreshView: function() {
-        this.sortData();
-        const U = window.Fotki.Utils;
-        if (U.settings.groupByUser) {
-            if (this.viewState === 'photos' && this.selectedUser) {
-                this.renderUserPhotos(this.selectedUser);
-            } else {
-                this.renderRootUsers();
-            }
-        } else {
-            this.renderFlatList();
-        }
+    refreshView: function() { 
+        this.sortData(); 
+        const U = window.Fotki.Utils; 
+        if (U.settings.groupByUser) { 
+            if (this.viewState === 'photos' && this.selectedUser) { 
+                this.renderUserPhotos(this.selectedUser); 
+            } else { 
+                this.renderRootUsers(); 
+            } 
+        } else { 
+            this.renderFlatList(); 
+        } 
     },
 
-    // --- Renderers ---
-
-    appendLoadMoreBtn: function(target) {
-        let container = target.querySelector('.fg-load-more-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.className = 'fg-load-more-container';
-            target.appendChild(container);
-        } else {
+    appendLoadMoreBtn: function(target) { 
+        let container = target.querySelector('.fg-load-more-container'); 
+        if (!container) { 
+            container = document.createElement('div'); 
+            container.className = 'fg-load-more-container'; 
             target.appendChild(container); 
-        }
-        
+        } else { 
+            target.appendChild(container); 
+        } 
         container.innerHTML = ''; 
-
-        if (this.nextPageUrl) {
-            const btn = document.createElement('button');
-            btn.className = 'fg-load-more-btn';
-            btn.textContent = 'Načíst starší';
-            btn.onclick = () => this.loadMore();
-            container.appendChild(btn);
-        } else if (this.allItems.length > 0) {
-            const msg = document.createElement('div');
-            msg.style.color = '#555';
-            msg.innerText = 'Konec historie';
-            container.appendChild(msg);
-        }
+        
+        if (this.nextPageUrl) { 
+            const btn = document.createElement('button'); 
+            btn.className = 'fg-load-more-btn'; 
+            btn.textContent = 'Načíst starší'; 
+            btn.onclick = () => this.loadMore(); 
+            container.appendChild(btn); 
+        } else if (this.allItems.length > 0) { 
+            const msg = document.createElement('div'); 
+            msg.style.color = '#555'; 
+            msg.innerText = 'Konec historie'; 
+            container.appendChild(msg); 
+        } 
     },
 
-    renderRootUsers: function() {
-        this.viewState = 'root';
-        this.selectedUser = null;
-        const target = document.getElementById('fg-content-target');
-        document.getElementById('fg-breadcrumbs').innerHTML = '';
-        document.getElementById('fg-back-btn').style.display = 'none';
-        target.className = 'fg-user-grid';
-        target.innerHTML = '';
-
-        const users = Object.keys(this.groupedData);
+    renderRootUsers: function() { 
+        this.viewState = 'root'; 
+        this.selectedUser = null; 
+        const target = document.getElementById('fg-content-target'); 
+        document.getElementById('fg-breadcrumbs').innerHTML = ''; 
+        document.getElementById('fg-back-btn').style.display = 'none'; 
+        target.className = 'fg-user-grid'; 
+        target.innerHTML = ''; 
         
-        const s = window.Fotki.Utils.settings.sortOrder;
-        if (s === 'name_asc') users.sort((a, b) => a.localeCompare(b));
-        else if (s === 'name_desc') users.sort((a, b) => b.localeCompare(a));
-
-        if (users.length === 0) {
-            target.innerHTML = '<div style="color:#666; padding:20px; text-align:center;">Žádné fotky.</div>';
+        const users = Object.keys(this.groupedData); 
+        const s = window.Fotki.Utils.settings.sortOrder; 
+        
+        if (s === 'name_asc') users.sort((a, b) => a.localeCompare(b)); 
+        else if (s === 'name_desc') users.sort((a, b) => b.localeCompare(a)); 
+        
+        if (users.length === 0) { 
+            target.innerHTML = '<div style="color:#666; padding:20px; text-align:center;">Žádné fotky.</div>'; 
             this.appendLoadMoreBtn(target); 
-            return;
-        }
-
-        users.forEach(user => {
-            const photos = this.groupedData[user];
-            if (!photos.length) return;
-            
-            const card = document.createElement('div');
-            card.className = 'fg-user-card';
-            card.dataset.user = user; 
-            card.onclick = () => this.renderUserPhotos(user);
-            
-            card.innerHTML = `
-                <div class="fg-user-thumb">
-                    <img src="${photos[0].thumb}" data-orig="${photos[0].src}">
-                    <div class="fg-user-count">${photos.length}</div>
-                </div>
-                <div class="fg-user-info"><span class="fg-user-name">${user}</span></div>
-            `;
-            
-            const img = card.querySelector('img');
-            const item = photos[0];
-            
-            let attempt = 0;
-            const tryNext = () => {
-                attempt++;
-                if (attempt < photos.length && attempt < 5) {
-                    img.src = photos[attempt].thumb;
-                } else {
-                    card.remove(); 
-                }
-            };
-
-            img.onerror = () => {
-                if (this.isTrustedHost(item.src) && img.src !== item.src) {
-                    img.src = item.src;
-                } else {
-                    tryNext();
-                }
-            };
-
-            img.onload = () => {
-                if (img.naturalWidth > 0 && img.naturalWidth < 50) tryNext();
-            };
-            
-            target.appendChild(card);
-        });
-
-        this.appendLoadMoreBtn(target);
-    },
-
-    renderUserPhotos: function(user) {
-        const U = window.Fotki.Utils;
-        U.showLoader();
-        setTimeout(() => {
-            this.viewState = 'photos';
-            this.selectedUser = user;
-            
-            const target = document.getElementById('fg-content-target');
-            document.getElementById('fg-breadcrumbs').innerHTML = ` &rsaquo; <span>${user}</span>`;
-            document.getElementById('fg-back-btn').style.display = 'block';
-            target.className = 'fg-photo-grid';
-            target.innerHTML = '';
-
-            this.currentList = this.groupedData[user];
-            if (!this.currentList) {
-                this.goBack();
-                return;
-            }
-
-            this.renderPhotoCards(target, this.currentList, false);
-            this.appendLoadMoreBtn(target);
-
-            U.hideLoader();
-        }, 50);
-    },
-
-    renderFlatList: function() {
-        this.viewState = 'root';
-        this.selectedUser = null;
-        const target = document.getElementById('fg-content-target');
-        document.getElementById('fg-breadcrumbs').innerHTML = ` &rsaquo; <span>Vše</span>`;
-        document.getElementById('fg-back-btn').style.display = 'none';
-        target.className = 'fg-photo-grid';
-        target.innerHTML = '';
+            return; 
+        } 
         
-        this.currentList = this.allItems;
-        this.renderPhotoCards(target, this.allItems, true);
-        this.appendLoadMoreBtn(target);
-    },
-
-    renderPhotoCards: function(container, photos, showUserLabel) {
-        photos.forEach((item, index) => {
-            const card = document.createElement('div');
-            card.className = 'fg-photo-card';
-            const userHtml = showUserLabel ? `<span class="fg-photo-user">${item.user}</span>` : '';
-
-            card.innerHTML = `
-                <div class="fg-photo-box">
-                    <img src="${item.thumb}" loading="lazy" data-orig="${item.src}">
-                </div>
-                <div class="fg-photo-meta">
-                    <div>${userHtml}<span style="color:#aaa">${item.date}</span></div>
-                    <a href="${item.link}" target="_blank" class="fg-link" title="Otevřít příspěvek v novém okně">➜</a>
-                </div>
-            `;
+        users.forEach(user => { 
+            const photos = this.groupedData[user]; 
+            if (!photos.length) return; 
             
-            const img = card.querySelector('img');
-            const handleFail = () => {
+            const card = document.createElement('div'); 
+            card.className = 'fg-user-card'; 
+            card.dataset.user = user; 
+            card.onclick = () => this.renderUserPhotos(user); 
+            
+            card.innerHTML = `<div class="fg-user-thumb"><img src="${photos[0].thumb}" data-orig="${photos[0].src}"><div class="fg-user-count">${photos.length}</div></div><div class="fg-user-info"><span class="fg-user-name">${user}</span></div>`; 
+            
+            const img = card.querySelector('img'); 
+            const item = photos[0]; 
+            let attempt = 0; 
+            
+            const tryNext = () => { 
+                attempt++; 
+                if (attempt < photos.length && attempt < 5) { 
+                    img.src = photos[attempt].thumb; 
+                } else { 
+                    card.remove(); 
+                } 
+            }; 
+            
+            img.onerror = () => { 
+                if (this.isTrustedHost(item.src) && img.src !== item.src) { 
+                    img.src = item.src; 
+                } else { 
+                    tryNext(); 
+                } 
+            }; 
+            
+            img.onload = () => { 
+                if (img.naturalWidth > 0 && img.naturalWidth < 50) tryNext(); 
+            }; 
+            
+            target.appendChild(card); 
+        }); 
+        
+        this.appendLoadMoreBtn(target); 
+    },
+
+    renderUserPhotos: function(user) { 
+        const U = window.Fotki.Utils; 
+        U.showLoader(); 
+        
+        setTimeout(() => { 
+            this.viewState = 'photos'; 
+            this.selectedUser = user; 
+            const target = document.getElementById('fg-content-target'); 
+            document.getElementById('fg-breadcrumbs').innerHTML = ` &rsaquo; <span>${user}</span>`; 
+            document.getElementById('fg-back-btn').style.display = 'block'; 
+            target.className = 'fg-photo-grid'; 
+            target.innerHTML = ''; 
+            
+            this.currentList = this.groupedData[user]; 
+            if (!this.currentList) { 
+                this.goBack(); 
+                return; 
+            } 
+            
+            this.renderPhotoCards(target, this.currentList, false); 
+            this.appendLoadMoreBtn(target); 
+            U.hideLoader(); 
+        }, 50); 
+    },
+
+    renderFlatList: function() { 
+        this.viewState = 'root'; 
+        this.selectedUser = null; 
+        const target = document.getElementById('fg-content-target'); 
+        document.getElementById('fg-breadcrumbs').innerHTML = ` &rsaquo; <span>Vše</span>`; 
+        document.getElementById('fg-back-btn').style.display = 'none'; 
+        target.className = 'fg-photo-grid'; 
+        target.innerHTML = ''; 
+        
+        this.currentList = this.allItems; 
+        this.renderPhotoCards(target, this.allItems, true); 
+        this.appendLoadMoreBtn(target); 
+    },
+
+    renderPhotoCards: function(container, photos, showUserLabel) { 
+        photos.forEach((item, index) => { 
+            const card = document.createElement('div'); 
+            card.className = 'fg-photo-card'; 
+            const userHtml = showUserLabel ? `<span class="fg-photo-user">${item.user}</span>` : ''; 
+            
+            card.innerHTML = `<div class="fg-photo-box"><img src="${item.thumb}" loading="lazy" data-orig="${item.src}"></div><div class="fg-photo-meta"><div>${userHtml}<span style="color:#aaa">${item.date}</span></div><a href="${item.link}" target="_blank" class="fg-link" title="Otevřít příspěvek v novém okně">➜</a></div>`; 
+            
+            const img = card.querySelector('img'); 
+            const handleFail = () => { 
                 card.remove(); 
-                this.pruneItem(item);
-            };
-
-            const stuckTimer = setTimeout(() => {
-                if (!img.complete || img.naturalWidth === 0) handleFail();
-            }, 15000);
-
-            img.onerror = () => {
-                clearTimeout(stuckTimer);
-                if (this.isTrustedHost(item.src) && img.src !== item.src) {
-                    img.src = item.src;
-                } else {
-                    handleFail();
-                }
-            };
-
-            img.onload = () => {
-                clearTimeout(stuckTimer);
-                if (img.naturalWidth > 0 && img.naturalWidth < 50) handleFail();
-            };
-
-            card.querySelector('.fg-photo-box').onclick = () => { this.openLightbox(index); };
-            container.appendChild(card);
-        });
+                this.pruneItem(item); 
+            }; 
+            
+            const stuckTimer = setTimeout(() => { 
+                if (!img.complete || img.naturalWidth === 0) handleFail(); 
+            }, 15000); 
+            
+            img.onerror = () => { 
+                clearTimeout(stuckTimer); 
+                if (this.isTrustedHost(item.src) && img.src !== item.src) { 
+                    img.src = item.src; 
+                } else { 
+                    handleFail(); 
+                } 
+            }; 
+            
+            img.onload = () => { 
+                clearTimeout(stuckTimer); 
+                if (img.naturalWidth > 0 && img.naturalWidth < 50) handleFail(); 
+            }; 
+            
+            card.querySelector('.fg-photo-box').onclick = () => { 
+                this.openLightbox(index); 
+            }; 
+            
+            container.appendChild(card); 
+        }); 
     },
 
-    // --- Lightbox Control ---
-
-    openLightbox: function(index) {
-        if (!this.currentList || this.currentList.length === 0) return;
-        this.currentIndex = index;
-        this.isLightboxOpen = true;
-        this.updateLightboxContent();
-        document.getElementById('fg-lightbox').style.display = 'flex';
+    openLightbox: function(index) { 
+        if (!this.currentList || this.currentList.length === 0) return; 
+        this.currentIndex = index; 
+        this.isLightboxOpen = true; 
+        this.updateLightboxContent(); 
+        document.getElementById('fg-lightbox').style.display = 'flex'; 
     },
 
-    closeLightbox: function() {
-        document.getElementById('fg-lightbox').style.display = 'none';
-        this.isLightboxOpen = false;
-        window.Fotki.Lightbox.resetZoom();
+    closeLightbox: function() { 
+        document.getElementById('fg-lightbox').style.display = 'none'; 
+        this.isLightboxOpen = false; 
+        window.Fotki.Lightbox.resetZoom(); 
     },
 
-    changeImage: function(direction) {
-        let newIndex = this.currentIndex + direction;
+    changeImage: function(direction) { 
+        let newIndex = this.currentIndex + direction; 
         if (newIndex < 0) newIndex = this.currentList.length - 1; 
         if (newIndex >= this.currentList.length) newIndex = 0; 
-        this.currentIndex = newIndex;
-        this.updateLightboxContent();
+        this.currentIndex = newIndex; 
+        this.updateLightboxContent(); 
     },
 
-    updateLightboxContent: function() {
-        const item = this.currentList[this.currentIndex];
-        const imgEl = document.getElementById('fg-lb-img');
-        const metaEl = document.getElementById('fg-lb-meta-text');
-        const linkEl = document.getElementById('fg-lb-post-link');
-
-        window.Fotki.Lightbox.resetZoom();
-
-        imgEl.src = item.src;
-        metaEl.innerHTML = `<span style="color:#d35400; font-weight:bold">${item.user}</span> &bull; ${item.date} (${this.currentIndex + 1} / ${this.currentList.length})`;
-        linkEl.href = item.link;
+    updateLightboxContent: function() { 
+        const item = this.currentList[this.currentIndex]; 
+        const imgEl = document.getElementById('fg-lb-img'); 
+        const metaEl = document.getElementById('fg-lb-meta-text'); 
+        const linkEl = document.getElementById('fg-lb-post-link'); 
+        
+        window.Fotki.Lightbox.resetZoom(); 
+        
+        imgEl.src = item.src; 
+        metaEl.innerHTML = `<span style="color:#d35400; font-weight:bold">${item.user}</span> &bull; ${item.date} (${this.currentIndex + 1} / ${this.currentList.length})`; 
+        linkEl.href = item.link; 
     },
 
-    goBack: function() { this.renderRootUsers(); },
-    toggle: function() { this.isOpen ? this.close() : this.open(); },
+    goBack: function() { 
+        this.renderRootUsers(); 
+    },
 
-    open: function() {
-        const self = this;
-        const root = document.getElementById('fotki-gallery-root');
-        const U = window.Fotki.Utils;
-        root.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        self.isOpen = true;
+    toggle: function() { 
+        this.isOpen ? this.close() : this.open(); 
+    },
+
+    open: function() { 
+        const self = this; 
+        const root = document.getElementById('fotki-gallery-root'); 
+        const U = window.Fotki.Utils; 
+        
+        root.style.display = 'flex'; 
+        document.body.style.overflow = 'hidden'; 
+        self.isOpen = true; 
         
         // Reset stop flag on open
         self.stopRequested = false;
         
-        if (self.allItems.length === 0) {
-            U.showLoader();
-            self.resetData();
-            setTimeout(() => {
+        if (self.allItems.length === 0) { 
+            U.showLoader(); 
+            self.resetData(); 
+            setTimeout(() => { 
                 const res = self.extractData(document); 
                 self.nextPageUrl = res.nextLink; 
                 
-                if (res.count < U.settings.batchSize && self.nextPageUrl) {
-                    self.loadMore();
-                } else {
-                    if (U.settings.groupByUser) self.renderRootUsers();
-                    else self.renderFlatList();
-                    U.hideLoader();
-                }
-            }, 50);
-        } else {
-            document.getElementById('fotki-gallery-root').style.display = 'flex';
-        }
+                if (res.count < U.settings.batchSize && self.nextPageUrl) { 
+                    self.loadMore(); 
+                } else { 
+                    if (U.settings.groupByUser) self.renderRootUsers(); 
+                    else self.renderFlatList(); 
+                    U.hideLoader(); 
+                } 
+            }, 50); 
+        } else { 
+            document.getElementById('fotki-gallery-root').style.display = 'flex'; 
+        } 
     },
 
-    close: function() {
-        document.getElementById('fotki-gallery-root').style.display = 'none';
-        document.querySelector('#fg-settings-panel').classList.remove('active');
-        document.body.style.overflow = '';
-        this.isOpen = false;
+    close: function() { 
+        document.getElementById('fotki-gallery-root').style.display = 'none'; 
+        document.querySelector('#fg-settings-panel').classList.remove('active'); 
+        document.body.style.overflow = ''; 
+        this.isOpen = false; 
     }
 };
