@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         fotki
 // @namespace    http://tampermonkey.net/
-// @version      6.1
-// @description  Gallery with Lightbox (Mousse-Follow Zoom), Loading States & Settings
+// @version      6.2
+// @description  Gallery with Lightbox (Mouse-Follow Zoom), Loading States & Settings
 // @author       kokochan
 // @match        https://www.okoun.cz/boards/*
 // @grant        GM_addStyle
@@ -19,9 +19,16 @@
 (function() {
     'use strict';
 
-    // 1. Inject Styles
+    // 1. Inject Styles (Safe Mode for Greasemonkey)
     if (window.Fotki && window.Fotki.styles) {
-        GM_addStyle(window.Fotki.styles);
+        if (typeof GM_addStyle !== 'undefined') {
+            GM_addStyle(window.Fotki.styles);
+        } else {
+            // Fallback for Greasemonkey v4+ which lacks GM_addStyle
+            const style = document.createElement('style');
+            style.textContent = window.Fotki.styles;
+            document.head.appendChild(style);
+        }
     }
 
     // 2. Initialize App
