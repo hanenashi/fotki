@@ -35,10 +35,7 @@ window.Fotki.App = {
     init: function() {
         const U = window.Fotki.Utils;
         
-        // 1. MOBILE FIX: Inject Viewport Meta Tag if missing
-        this.fixViewport();
-
-        // 2. Inject Styles safely
+        // Inject Styles
         if (window.Fotki.styles) {
             if (typeof GM_addStyle !== 'undefined') {
                 GM_addStyle(window.Fotki.styles);
@@ -57,17 +54,25 @@ window.Fotki.App = {
         this.bindKeys();
     },
 
-    fixViewport: function() {
-        // Okoun lacks a viewport tag, causing mobile browsers to zoom out (desktop mode).
-        // We inject one to force 1:1 scaling so media queries work.
-        if (!document.querySelector('meta[name="viewport"]')) {
-            const meta = document.createElement('meta');
-            meta.name = 'viewport';
-            meta.content = 'width=device-width, initial-scale=1.0';
-            document.head.appendChild(meta);
-            console.log('Fotki: Mobile viewport injected.');
+    // --- V5.6: Dynamic Mobile Viewport Toggle ---
+    toggleViewport: function(enable) {
+        let meta = document.querySelector('meta[name="viewport"]');
+        if (enable) {
+            if (!meta) {
+                meta = document.createElement('meta');
+                meta.name = 'viewport';
+                meta.id = 'fg-temp-viewport';
+                // Force mobile scaling
+                meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+                document.head.appendChild(meta);
+            }
+        } else {
+            // Remove our temp tag to restore Desktop Mode for Okoun
+            const tempMeta = document.getElementById('fg-temp-viewport');
+            if (tempMeta) tempMeta.remove();
         }
     },
+    // --------------------------------------------
 
     injectButton: function() {
         const menu = document.querySelector('.head .nav .menu');
@@ -75,7 +80,7 @@ window.Fotki.App = {
         const btn = document.createElement('a');
         btn.className = 'gallery-toggle';
         
-        // Simple text per your request
+        // Simple text
         btn.textContent = 'Fotki'; 
         
         btn.onclick = (e) => { 
@@ -400,7 +405,6 @@ window.Fotki.App = {
         let tsStart = dateStart ? new Date(dateStart).getTime() : null;
         let tsStop = dateStop ? new Date(dateStop).getTime() : null;
 
-        // Auto-swap dates if confused
         if (tsStart && tsStop && tsStart < tsStop) {
             const temp = tsStart;
             tsStart = tsStop;
@@ -415,7 +419,6 @@ window.Fotki.App = {
         U.showLoader();
         this.resetData(); 
         
-        // Restore limits after reset
         this.dateLimitMax = tsStart;
         this.dateLimitMin = tsStop;
         
@@ -423,8 +426,7 @@ window.Fotki.App = {
             this.isSeeking = true;
             this.toggleStatusBar(true);
             this.updateStatus(`⏳ Cestuji v čase do ${new Date(this.dateLimitMax).toLocaleDateString()}...`);
-            const stopBtn = document.getElementById('fg-stop-btn');
-            if (stopBtn) stopBtn.style.display = 'block';
+            document.getElementById('fg-stop-btn').style.display = 'block';
         } else {
             this.isSeeking = false;
             this.toggleStatusBar(false);
@@ -458,7 +460,6 @@ window.Fotki.App = {
     findNextPage: function(doc) {
         const self = this;
         
-        // 1. SEEKING MODE (Fast Jump)
         if (self.isSeeking && self.dateLimitMax) {
             let bestLink = null;
             let bestLinkTs = 0;
@@ -490,7 +491,6 @@ window.Fotki.App = {
             }
         }
 
-        // 2. STANDARD MODE
         let el = doc.querySelector('.pager .older a');
         if (el) return el.href;
         
@@ -513,7 +513,6 @@ window.Fotki.App = {
 
         const posts = doc.querySelectorAll('.listing .item');
 
-        // First pass: Determine page range
         posts.forEach(post => {
             const dateEl = post.querySelector('.permalink a.date');
             const dateText = dateEl ? dateEl.innerText.trim() : '';
@@ -531,7 +530,6 @@ window.Fotki.App = {
             }
         }
 
-        // Second pass: Collect
         posts.forEach(post => {
             const dateEl = post.querySelector('.permalink a.date');
             const dateText = dateEl ? dateEl.innerText.trim() : '';
@@ -951,6 +949,9 @@ window.Fotki.App = {
         const root = document.getElementById('fotki-gallery-root'); 
         const U = window.Fotki.Utils; 
         
+        // Dynamic Mobile Viewport Toggle
+        this.toggleViewport(true);
+        
         root.style.display = 'flex'; 
         document.body.style.overflow = 'hidden'; 
         self.isOpen = true; 
@@ -979,6 +980,9 @@ window.Fotki.App = {
     },
 
     close: function() { 
+        // Restore Desktop Viewport
+        this.toggleViewport(false);
+        
         document.getElementById('fotki-gallery-root').style.display = 'none'; 
         document.querySelector('#fg-settings-panel').classList.remove('active'); 
         document.body.style.overflow = ''; 

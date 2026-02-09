@@ -3,11 +3,11 @@ window.Fotki = window.Fotki || {};
 window.Fotki.styles = `
     /* --- DESKTOP / BASE STYLES --- */
 
-    /* Toggle Button - Native Look */
+    /* Toggle Button */
     .head .menu a.gallery-toggle {
         cursor: pointer;
         margin-left: 10px;
-        /* Barvy a fonty dědíme z Okouna, aby to vypadalo přirozeně */
+        /* Inherit styles from Okoun */
     }
 
     /* Main Overlay */
@@ -15,7 +15,7 @@ window.Fotki.styles = `
 
     /* Header */
     .fg-header { flex: 0 0 45px; background: #111; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; color: #ccc; font-size: 14px; z-index: 10; }
-    .fg-header-left { display: flex; align-items: center; gap: 15px; }
+    .fg-header-left { display: flex; align-items: center; gap: 15px; overflow: hidden; white-space: nowrap; }
     .fg-title { font-weight: bold; color: #eee; }
     .fg-breadcrumbs { color: #777; font-size: 13px; }
     .fg-breadcrumbs span { color: #d35400; }
@@ -111,32 +111,32 @@ window.Fotki.styles = `
 
     /* --- MOBILE RESPONSIVE (MAX 768px) --- */
     @media (max-width: 768px) {
-        /* Header */
-        .fg-header { height: auto; flex-wrap: wrap; padding: 10px; gap: 10px; }
-        .fg-header-left { width: 100%; justify-content: space-between; }
-        .fg-title { font-size: 16px; }
-        .fg-btn { padding: 8px 12px; font-size: 14px; }
+        /* Header - Keep concise */
+        .fg-header { padding: 5px 10px; height: 50px; }
+        .fg-header-left { flex: 1; }
+        .fg-breadcrumbs { display: none !important; } /* Hide crumbs to save space */
+        .fg-btn { padding: 6px 10px; margin-left: 2px; }
         
         /* Status Bar - Stacked */
-        #fg-status-bar { height: auto; padding: 10px; flex-direction: column; gap: 8px; text-align: center; }
-        .fg-with-status .fg-scroll-area { margin-top: 70px; }
+        #fg-status-bar { height: auto; padding: 10px; flex-direction: column; gap: 8px; text-align: center; top: 50px; }
+        .fg-with-status .fg-scroll-area { margin-top: 80px; }
         .fg-stop-btn { width: 100%; margin: 0; padding: 8px; }
 
         /* Settings Panel - Full Screen */
         #fg-settings-panel { 
-            position: fixed; top: 10%; left: 5%; width: 90%; 
-            max-height: 80vh; right: auto; 
-            border: 1px solid #555; box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            max-height: 100%; right: auto; border: none; border-radius: 0;
+            padding: 20px; box-sizing: border-box; z-index: 1000;
         }
-        .fg-setting-row input, .fg-setting-row select { font-size: 16px; padding: 8px; }
+        .fg-setting-row input, .fg-setting-row select { font-size: 16px; padding: 10px; }
 
         /* Grids - 2 Column tight */
-        .fg-photo-grid { grid-template-columns: repeat(auto-fill, minmax(45%, 1fr)); gap: 6px; }
-        .fg-user-grid { grid-template-columns: repeat(auto-fill, minmax(45%, 1fr)); gap: 6px; }
+        .fg-photo-grid { grid-template-columns: repeat(auto-fill, minmax(48%, 1fr)); gap: 4px; padding: 5px; }
+        .fg-user-grid { grid-template-columns: repeat(auto-fill, minmax(48%, 1fr)); gap: 4px; padding: 5px; }
         
         /* Lightbox - Finger Friendly */
         .fg-lb-btn { width: 60px; height: 120px; font-size: 40px; background: rgba(0,0,0,0.3); }
         .fg-lb-close { width: 50px; height: 50px; font-size: 30px; top: 10px; right: 10px; }
-        .fg-lb-footer { height: auto; padding: 10px; flex-direction: column; gap: 5px; text-align: center; }
+        .fg-lb-footer { height: auto; padding: 15px; flex-direction: column; gap: 10px; text-align: center; }
     }
 `;
