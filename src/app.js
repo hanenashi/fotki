@@ -25,7 +25,11 @@ window.Fotki.App = {
 
     // Trusted for retry
     trustedHosts: [
-        'peklo.biz', 'opu.peklo.biz', 'pic.peklo.biz', 'flickr.com', 'static.flickr.com'
+        'peklo.biz',
+        'opu.peklo.biz',
+        'pic.peklo.biz',
+        'flickr.com',
+        'static.flickr.com'
     ],
 
     init: function() {
@@ -169,10 +173,24 @@ window.Fotki.App = {
         };
 
         // Settings Handlers
-        root.querySelector('#fg-opt-group').onchange = (e) => { U.saveSettings({ groupByUser: e.target.checked }); this.forceRefresh(); };
-        root.querySelector('#fg-opt-sort').onchange = (e) => { U.saveSettings({ sortOrder: e.target.value }); this.forceRefresh(); };
-        root.querySelector('#fg-opt-batch').onchange = (e) => { let val = parseInt(e.target.value, 10); if (val < 10) val = 10; U.saveSettings({ batchSize: val }); };
-        root.querySelector('#fg-opt-blacklist').onchange = (e) => { const raw = e.target.value; const list = raw.split('\n').map(s => s.trim()).filter(s => s.length > 0); U.saveSettings({ deadHosts: list }); };
+        root.querySelector('#fg-opt-group').onchange = (e) => { 
+            U.saveSettings({ groupByUser: e.target.checked }); 
+            this.forceRefresh(); 
+        };
+        root.querySelector('#fg-opt-sort').onchange = (e) => { 
+            U.saveSettings({ sortOrder: e.target.value }); 
+            this.forceRefresh(); 
+        };
+        root.querySelector('#fg-opt-batch').onchange = (e) => { 
+            let val = parseInt(e.target.value, 10); 
+            if (val < 10) val = 10; 
+            U.saveSettings({ batchSize: val }); 
+        };
+        root.querySelector('#fg-opt-blacklist').onchange = (e) => { 
+            const raw = e.target.value; 
+            const list = raw.split('\n').map(s => s.trim()).filter(s => s.length > 0); 
+            U.saveSettings({ deadHosts: list }); 
+        };
 
         root.querySelector('#fg-date-go').onclick = () => {
             const dStop = root.querySelector('#fg-date-from').value; // Oldest
@@ -374,6 +392,8 @@ window.Fotki.App = {
             this.isSeeking = true;
             this.toggleStatusBar(true);
             this.updateStatus(`⏳ Cestuji v čase do ${new Date(this.dateLimitMax).toLocaleDateString()}...`);
+            // Show stop button at start
+            document.getElementById('fg-stop-btn').style.display = 'block';
         } else {
             this.isSeeking = false;
             this.toggleStatusBar(false);
@@ -416,7 +436,9 @@ window.Fotki.App = {
             pagerLinks.forEach(link => {
                 const linkTs = self.parseUrlDate(link.href);
                 if (linkTs) {
+                    // Only jump if link is still newer/equal to target
                     if (linkTs >= self.dateLimitMax) {
+                        // Find oldest safe link
                         if (bestLink === null || linkTs < bestLinkTs) {
                             bestLink = link.href;
                             bestLinkTs = linkTs;
@@ -426,6 +448,7 @@ window.Fotki.App = {
             });
             
             let olderBtn = doc.querySelector('.pager .older a');
+            // Dot pagination fallback
             if (!olderBtn) {
                 for(let l of pagerLinks) {
                     if (l.innerText.includes('Starší') || l.innerText.trim() === '>' || l.innerText.trim() === '›') olderBtn = l;
@@ -434,6 +457,7 @@ window.Fotki.App = {
             
             let olderBtnTs = olderBtn ? self.parseUrlDate(olderBtn.href) : 0;
 
+            // Prefer Fast Jump if it gets us closer (is older) than the "Next" button
             if (bestLink && olderBtnTs && bestLinkTs < olderBtnTs) {
                 return bestLink;
             }
@@ -475,6 +499,7 @@ window.Fotki.App = {
 
         // Did we reach target?
         if (this.isSeeking && this.dateLimitMax) {
+            // Stop seeking if page overlaps target OR is completely older than target
             if (oldestOnPage > 0 && oldestOnPage <= this.dateLimitMax) {
                 this.isSeeking = false;
                 this.updateStatus(`🎯 Nalezeno! Skenuji od ${new Date(this.dateLimitMax).toLocaleDateString()}...`);
@@ -532,8 +557,8 @@ window.Fotki.App = {
     sortData: function() {
         const U = window.Fotki.Utils;
         const s = U.settings.sortOrder;
-        
         let sortFn;
+        
         if (s === 'newest') sortFn = (a, b) => b.ts - a.ts;
         else if (s === 'oldest') sortFn = (a, b) => a.ts - b.ts;
         else if (s === 'name_asc') sortFn = (a, b) => a.user.localeCompare(b.user) || b.ts - a.ts;
@@ -555,7 +580,10 @@ window.Fotki.App = {
         self.isFetching = true;
         
         const btn = document.querySelector('.fg-load-more-btn');
-        if(btn) { btn.textContent = "Načítám..."; btn.disabled = true; }
+        if(btn) { 
+            btn.textContent = "Načítám..."; 
+            btn.disabled = true; 
+        }
 
         const targetCount = U.settings.batchSize;
         const MAX_PAGES = (self.dateLimitMin || self.isSeeking) ? 1000 : 50; 
@@ -575,10 +603,8 @@ window.Fotki.App = {
                 }
 
                 if (self.isSeeking) {
-                    // Fast Rewind UI
                     if(btn) btn.textContent = `⏳ Cestuji v čase...`;
                 } else {
-                    // Scanning UI
                     if (pagesFetched > 0) await new Promise(r => setTimeout(r, 500));
                     self.updateStatus(`📷 Skenuji... nalezeno: ${self.allItems.length} fotek`);
                     if(btn) btn.textContent = `Hledám... (${self.allItems.length})`;
@@ -618,17 +644,28 @@ window.Fotki.App = {
 
         } catch (e) {
             console.error('Fotki: Error', e);
-            if(btn) { btn.textContent = "Chyba (zkusit znovu)"; btn.disabled = false; }
+            if(btn) { 
+                btn.textContent = "Chyba (zkusit znovu)"; 
+                btn.disabled = false; 
+            }
         } finally {
             self.isFetching = false;
             U.hideLoader();
             
-            // If stopped, keep the count in status bar
+            // --- FIX: Hide Stop Button when done ---
+            const stopBtn = document.getElementById('fg-stop-btn');
+            
             if (self.stopRequested) {
                 self.updateStatus(`🛑 Zastaveno. Nalezeno ${self.allItems.length} fotek.`);
+                if(stopBtn) stopBtn.style.display = 'none';
             } else if (!self.nextPageUrl) {
                 self.updateStatus(`✅ Hotovo. Celkem ${self.allItems.length} fotek.`);
+                if(stopBtn) stopBtn.style.display = 'none';
+            } else if (!self.isSeeking) {
+                // If standard loading finished (paused), hide it too
+                if(stopBtn) stopBtn.style.display = 'none';
             }
+            // ---------------------------------------
 
             const freshBtn = document.querySelector('.fg-load-more-btn');
             if (freshBtn) {
@@ -636,7 +673,6 @@ window.Fotki.App = {
                     freshBtn.textContent = 'Načíst starší';
                     freshBtn.disabled = false;
                 } else {
-                    // Show message only if we actually found something or hit the end
                     if (document.querySelector('.listing .item')) {
                          freshBtn.textContent = 'Zkusit najít další (konec?)';
                          freshBtn.disabled = false;
