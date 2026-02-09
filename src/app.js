@@ -16,9 +16,11 @@ window.Fotki.App = {
     // Paging
     nextPageUrl: null,
     isFetching: false,
+    
+    // Time Travel State
     dateLimitMin: null, // "Stop" Date (Oldest)
     dateLimitMax: null, // "Start" Date (Newest)
-    isSeeking: false,   // New flag for "Fast Forward" mode
+    isSeeking: false,   // Mode: true = fast forwarding, false = scraping photos
 
     // Trusted for retry
     trustedHosts: [
@@ -326,56 +328,45 @@ window.Fotki.App = {
         return url;
     },
 
+    // --- Time Travel Engine ---
+
     startTimeTravel: function(dateFrom, dateTo) {
-        const U = window.Fotki.Utils;
-        
-        // dateFrom = Oldest date (Stop when we hit this)
-        // dateTo = Newest date (Start scanning from here)
-        
         this.dateLimitMin = dateFrom ? new Date(dateFrom).getTime() : null;
         this.dateLimitMax = dateTo ? new Date(dateTo).getTime() : null;
         
-        // Start from BASE url (current time), we will fast-seek backward
-        let startUrl = window.location.href.split('?')[0]; 
-        
-        // Activate "Seeking Mode" if we have a target start date
-        if (this.dateLimitMax) {
-            this.isSeeking = true;
-            console.log(`🚀 Time Travel: Target Start ${new Date(this.dateLimitMax).toLocaleString()}`);
-        } else {
-            this.isSeeking = false;
-            console.log("🚀 Time Travel: Starting from NOW.");
-        }
-        
+        const U = window.Fotki.Utils;
         U.showLoader();
         this.resetData();
+        
         // Restore limits after reset
         this.dateLimitMin = dateFrom ? new Date(dateFrom).getTime() : null;
         this.dateLimitMax = dateTo ? new Date(dateTo).getTime() : null;
-        if(this.dateLimitMax) this.isSeeking = true;
         
-        this.nextPageUrl = startUrl; 
+        // Start from current page (usually "Now")
+        this.nextPageUrl = window.location.href.split('?')[0]; 
+        
+        if (this.dateLimitMax) {
+            this.isSeeking = true; // Engage Turbo Mode
+            console.log(`🚀 Time Travel: Scanning back to ${new Date(this.dateLimitMax).toLocaleDateString()}...`);
+        } else {
+            this.isSeeking = false;
+        }
+        
         this.loadMore(true); 
     },
 
     resetTimeTravel: function() {
         const U = window.Fotki.Utils;
-        this.dateLimitMin = null;
-        this.dateLimitMax = null;
-        this.isSeeking = false;
         document.getElementById('fg-date-from').value = '';
         document.getElementById('fg-date-to').value = '';
-        
-        const startUrl = window.location.href.split('?')[0];
         
         console.log("🔄 Resetting Time Travel to Present.");
         U.showLoader();
         this.resetData();
-        this.nextPageUrl = startUrl;
+        this.nextPageUrl = window.location.href.split('?')[0];
         this.loadMore(true);
     },
 
-    // Extracts date from Okoun URL parameter ?f=20260101-120000
     parseUrlDate: function(url) {
         const match = url.match(/[?&]f=(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/);
         if (match) {
@@ -384,36 +375,52 @@ window.Fotki.App = {
         return null;
     },
 
-    // SMART PAGER NAVIGATION
+    // --- Smart Navigation (The "Fast Rewind" Logic) ---
     findNextPage: function(doc) {
         const self = this;
         
         // 1. SEEKING MODE: Find the oldest possible link to jump fast
         if (self.isSeeking && self.dateLimitMax) {
-            let oldestLink = null;
-            let oldestTime = Number.MAX_VALUE;
+            let bestLink = null;
+            let bestLinkTs = 0;
             
             const pagerLinks = doc.querySelectorAll('.pager a');
             pagerLinks.forEach(link => {
-                const ts = self.parseUrlDate(link.href);
-                if (ts && ts < oldestTime) {
-                    oldestTime = ts;
-                    oldestLink = link.href;
+                const linkTs = self.parseUrlDate(link.href);
+                if (linkTs) {
+                    // Logic: We want a link that is >= Target (so we don't overshoot),
+                    // but as small (old) as possible to move fast.
+                    if (linkTs >= self.dateLimitMax) {
+                        if (bestLink === null || linkTs < bestLinkTs) {
+                            bestLink = link.href;
+                            bestLinkTs = linkTs;
+                        }
+                    }
                 }
             });
             
-            // If the oldest link on page is still NEWER than our target, jump there!
-            if (oldestLink && oldestTime > self.dateLimitMax) {
-                console.log(`⏩ Fast Seeking to ${new Date(oldestTime).toLocaleString()}`);
-                return oldestLink;
+            // Compare "Fast Link" vs "Older Button"
+            let olderBtn = doc.querySelector('.pager .older a');
+            // Fallback for dot pagination
+            if (!olderBtn) {
+                for(let l of pagerLinks) {
+                    if (l.innerText.includes('Starší') || l.innerText.trim() === '>' || l.innerText.trim() === '›') olderBtn = l;
+                }
+            }
+            
+            let olderBtnTs = olderBtn ? self.parseUrlDate(olderBtn.href) : 0;
+
+            // If the Numbered Link gets us closer (is older) than the generic "Older" button, use it!
+            if (bestLink && olderBtnTs && bestLinkTs < olderBtnTs) {
+                console.log(`⏩ Fast Jump: ${new Date(bestLinkTs).toLocaleDateString()}`);
+                return bestLink;
             }
         }
 
-        // 2. STANDARD MODE: Just get the next page
+        // 2. STANDARD MODE (Or if Fast Jump failed): Use "Older" button
         let el = doc.querySelector('.pager .older a');
         if (el) return el.href;
         
-        // Fallback for weird layouts
         const pagerLinks = doc.querySelectorAll('.pager a');
         for (let i = 0; i < pagerLinks.length; i++) {
             const t = pagerLinks[i].innerText.trim();
@@ -432,10 +439,10 @@ window.Fotki.App = {
         let oldestOnPage = 0;
 
         const posts = doc.querySelectorAll('.listing .item');
-        console.log(`📄 Scanning page with ${posts.length} items...`);
 
         posts.forEach(post => {
-            const dateText = post.querySelector('.permalink a.date') ? post.querySelector('.permalink a.date').innerText.trim() : '';
+            const dateEl = post.querySelector('.permalink a.date');
+            const dateText = dateEl ? dateEl.innerText.trim() : '';
             const timestamp = U.parseCzechDate(dateText);
 
             if (timestamp > 0) {
@@ -443,30 +450,33 @@ window.Fotki.App = {
                 if (oldestOnPage === 0 || timestamp < oldestOnPage) oldestOnPage = timestamp;
             }
 
-            // CHECK: Have we reached the user's Start Date (dateLimitMax)?
-            if (this.isSeeking && this.dateLimitMax && timestamp > 0 && timestamp <= this.dateLimitMax) {
-                console.log(`🎯 Target Reached! Switching to Scan Mode at ${new Date(timestamp).toLocaleString()}`);
-                this.isSeeking = false; // We arrived! Start capturing.
+            // --- STATE CHECK: Did we arrive? ---
+            if (this.isSeeking && this.dateLimitMax) {
+                // If the target date is WITHIN this page's range (or page is OLDER than target)
+                // We have arrived. Stop seeking, start scraping.
+                if (timestamp <= this.dateLimitMax) {
+                    this.isSeeking = false;
+                    console.log(`🎯 Target Reached (${new Date(timestamp).toLocaleDateString()})! Switching to Gallery Mode.`);
+                }
             }
 
-            // CHECK: Are we still seeking (too new)?
-            if (this.isSeeking) return; // Skip everything while seeking
+            // SKIP if Seeking
+            if (this.isSeeking) return;
 
-            // CHECK: Are we too old (dateLimitMin)?
+            // STOP if too old (User's "Stop" date)
             if (this.dateLimitMin && timestamp > 0 && timestamp < this.dateLimitMin) {
                 stopSignal = true;
                 return; 
             }
 
-            // CHECK: Future Debris (Safety net)
+            // SKIP if "Future Debris" (Leftovers from previous pages)
             if (this.dateLimitMax && timestamp > 0 && timestamp > (this.dateLimitMax + 86400000)) {
                 return; 
             }
 
             const userEl = post.querySelector('.meta .user');
             const user = userEl ? userEl.innerText.trim() : 'Anonym';
-            const linkEl = post.querySelector('.permalink a.date');
-            const link = linkEl ? linkEl.href : '#';
+            const link = dateEl ? dateEl.href : '#';
 
             post.querySelectorAll('.content img').forEach(img => {
                 if (this.isSafeUrl(img.src)) {
@@ -490,7 +500,7 @@ window.Fotki.App = {
             });
         });
         
-        return { count, nextLink: this.findNextPage(doc), stopSignal };
+        return { count, nextLink: this.findNextPage(doc), stopSignal, oldestOnPage };
     },
 
     sortData: function() {
@@ -525,26 +535,23 @@ window.Fotki.App = {
         }
 
         const targetCount = U.settings.batchSize;
-        const MAX_PAGES_LIMIT = (self.dateLimitMin || self.isSeeking) ? 500 : 50; 
+        const MAX_PAGES_LIMIT = 500; // Allow deep history scan
         
         let loadedPhotos = 0;
         let pagesFetched = 0;
         let stopLoading = false;
 
-        console.group('Fotki Load Batch');
-
         try {
             while (loadedPhotos < targetCount && pagesFetched < MAX_PAGES_LIMIT && self.nextPageUrl && !stopLoading) {
                 
-                // UI Feedback for Seeking
                 if (self.isSeeking) {
-                    if (btn) btn.textContent = `⏳ Cestuji v čase... (Strana ${pagesFetched})`;
+                    if (btn) btn.textContent = `⏳ Cestuji v čase... (${pagesFetched} skoků)`;
                 } else if (pagesFetched > 0) {
                     if (btn) btn.textContent = `Hledám fotky... (${pagesFetched})`;
-                    await new Promise(r => setTimeout(r, 800));
+                    await new Promise(r => setTimeout(r, 500));
                 }
 
-                console.log(`🔄 Fetching: ${self.nextPageUrl}`);
+                // console.log(`Fetch: ${self.nextPageUrl}`);
                 const response = await fetch(self.nextPageUrl);
                 if (!response.ok) throw new Error('Server status: ' + response.status);
 
@@ -558,8 +565,19 @@ window.Fotki.App = {
 
                 const result = self.extractData(newDoc);
                 
+                // Edge Case: End of History (No older link found)
+                if (!result.nextLink && self.isSeeking && result.oldestOnPage > 0) {
+                    // We hit the end, and we are still seeking. 
+                    // This means target date < oldest post (e.g. 2007-01-01 < 2007-12-11).
+                    // STOP seeking and show what we have.
+                    self.isSeeking = false;
+                    console.log("🛑 End of History reached. Stopping search.");
+                    
+                    // Re-scan this last page to capture photos now that Seeking is off
+                    self.extractData(newDoc); 
+                }
+
                 if (result.stopSignal) {
-                    console.warn(`🛑 Stop Signal received (Date Limit hit).`);
                     stopLoading = true;
                     self.nextPageUrl = null; 
                 } else {
@@ -567,10 +585,7 @@ window.Fotki.App = {
                     pagesFetched++;
                     self.nextPageUrl = result.nextLink;
 
-                    if (!self.nextPageUrl) {
-                        console.log("⚠️ No next page link found.");
-                        stopLoading = true;
-                    }
+                    if (!self.nextPageUrl) stopLoading = true;
                 }
             }
             self.refreshView();
@@ -584,7 +599,6 @@ window.Fotki.App = {
                 return;
             }
         } finally {
-            console.groupEnd();
             self.isFetching = false;
             U.hideLoader();
             
@@ -594,6 +608,7 @@ window.Fotki.App = {
                     freshBtn.textContent = 'Načíst starší';
                     freshBtn.disabled = false;
                 } else {
+                    // Show message only if we actually found something or hit the end
                     if (document.querySelector('.listing .item')) {
                          freshBtn.textContent = 'Zkusit najít další (konec?)';
                          freshBtn.disabled = false;
