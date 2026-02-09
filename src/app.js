@@ -16,7 +16,8 @@ window.Fotki.App = {
     // Paging
     nextPageUrl: null,
     isFetching: false,
-    dateLimitMin: null, 
+    dateLimitMin: null, // "Stop" Date (Oldest)
+    dateLimitMax: null, // "Start" Date (Newest)
 
     // Trusted for retry
     trustedHosts: [
@@ -30,7 +31,7 @@ window.Fotki.App = {
     init: function() {
         const U = window.Fotki.Utils;
         
-        // Ensure Styles are loaded (Double check for modular/bundled compatibility)
+        // Ensure Styles are loaded
         if (window.Fotki.styles) {
             if (typeof GM_addStyle !== 'undefined') {
                 GM_addStyle(window.Fotki.styles);
@@ -109,8 +110,8 @@ window.Fotki.App = {
                 <div class="fg-setting-row">
                     <label>Časové období (Od - Do)</label>
                     <div class="fg-date-group">
-                        <input type="date" id="fg-date-from" title="Datum, kde se načítání zastaví">
-                        <input type="date" id="fg-date-to" title="Datum, odkud se začne (skočí do historie)">
+                        <input type="date" id="fg-date-from" title="Stop (Nejstarší)">
+                        <input type="date" id="fg-date-to" title="Start (Nejnovější)">
                     </div>
                     <div class="fg-btn-row">
                         <button id="fg-date-go" class="fg-action-btn">Načíst období</button>
@@ -312,6 +313,7 @@ window.Fotki.App = {
         this.seenUrls.clear(); 
         this.nextPageUrl = null;
         this.dateLimitMin = null;
+        this.dateLimitMax = null;
     },
     
     getOpuThumb: function(url) {
@@ -326,14 +328,29 @@ window.Fotki.App = {
     startTimeTravel: function(dateFrom, dateTo) {
         const U = window.Fotki.Utils;
         this.dateLimitMin = dateFrom ? new Date(dateFrom).getTime() : null;
+        this.dateLimitMax = dateTo ? new Date(dateTo).getTime() : null;
+        
         let startUrl = window.location.href.split('?')[0]; 
+        
         if (dateTo) {
             const dt = new Date(dateTo);
             dt.setHours(23, 59, 59);
             startUrl += '?f=' + U.dateToOkounParam(dt);
+            console.log(`🚀 Time Travel: Jumping to ${dt.toLocaleString()} (${startUrl})`);
+        } else {
+            console.log("🚀 Time Travel: Starting from NOW.");
         }
+        
+        if (this.dateLimitMin) {
+            console.log(`🛑 Stop Target: ${new Date(this.dateLimitMin).toLocaleString()}`);
+        }
+
         U.showLoader();
         this.resetData();
+        // Restore limits after reset
+        this.dateLimitMin = dateFrom ? new Date(dateFrom).getTime() : null;
+        this.dateLimitMax = dateTo ? new Date(dateTo).getTime() : null;
+        
         this.nextPageUrl = startUrl; 
         this.loadMore(true); 
     },
@@ -341,11 +358,13 @@ window.Fotki.App = {
     resetTimeTravel: function() {
         const U = window.Fotki.Utils;
         this.dateLimitMin = null;
+        this.dateLimitMax = null;
         document.getElementById('fg-date-from').value = '';
         document.getElementById('fg-date-to').value = '';
         
         const startUrl = window.location.href.split('?')[0];
         
+        console.log("🔄 Resetting Time Travel to Present.");
         U.showLoader();
         this.resetData();
         this.nextPageUrl = startUrl;
@@ -356,7 +375,7 @@ window.Fotki.App = {
         let el = doc.querySelector('.pager .older a');
         if (el) return el.href;
         
-        // Dot pagination fix
+        // Dot pagination fallback
         const pagerLinks = doc.querySelectorAll('.pager a');
         for (let i = 0; i < pagerLinks.length; i++) {
             const t = pagerLinks[i].innerText.trim();
@@ -371,8 +390,13 @@ window.Fotki.App = {
         const U = window.Fotki.Utils;
         let count = 0;
         let stopSignal = false; 
+        let newestOnPage = 0;
+        let oldestOnPage = 0;
 
-        doc.querySelectorAll('.listing .item').forEach(post => {
+        const posts = doc.querySelectorAll('.listing .item');
+        console.log(`📄 Scanning page with ${posts.length} items...`);
+
+        posts.forEach(post => {
             const userEl = post.querySelector('.meta .user');
             const user = userEl ? userEl.innerText.trim() : 'Anonym';
             const linkEl = post.querySelector('.permalink a.date');
@@ -380,9 +404,20 @@ window.Fotki.App = {
             const dateText = linkEl ? linkEl.innerText.trim() : '';
             const timestamp = U.parseCzechDate(dateText);
 
+            if (timestamp > 0) {
+                if (newestOnPage === 0 || timestamp > newestOnPage) newestOnPage = timestamp;
+                if (oldestOnPage === 0 || timestamp < oldestOnPage) oldestOnPage = timestamp;
+            }
+
+            // 1. "Too Old" Check (Stop Searching)
             if (this.dateLimitMin && timestamp > 0 && timestamp < this.dateLimitMin) {
                 stopSignal = true;
-                return; 
+                return; // Skip this item
+            }
+
+            // 2. "Too New" Check (Skip "Future Debris")
+            if (this.dateLimitMax && timestamp > 0 && timestamp > (this.dateLimitMax + 86400000)) {
+                return; // Skip this item silently
             }
 
             post.querySelectorAll('.content img').forEach(img => {
@@ -406,6 +441,10 @@ window.Fotki.App = {
                 }
             });
         });
+        
+        if (newestOnPage > 0) {
+            console.log(`📅 Page Date Range: ${new Date(newestOnPage).toLocaleDateString()} -> ${new Date(oldestOnPage).toLocaleDateString()}`);
+        }
         
         return { count, nextLink: this.findNextPage(doc), stopSignal };
     },
@@ -442,13 +481,13 @@ window.Fotki.App = {
         }
 
         const targetCount = U.settings.batchSize;
-        
-        // HYPER-PERSISTENCE for history search
         const MAX_PAGES_LIMIT = self.dateLimitMin ? 500 : 50; 
         
         let loadedPhotos = 0;
         let pagesFetched = 0;
         let stopLoading = false;
+
+        console.group('Fotki Load Batch');
 
         try {
             while (loadedPhotos < targetCount && pagesFetched < MAX_PAGES_LIMIT && self.nextPageUrl && !stopLoading) {
@@ -459,6 +498,7 @@ window.Fotki.App = {
 
                 if(btn) btn.textContent = `Hledám... (nalezeno ${loadedPhotos})`;
 
+                console.log(`🔄 Fetching: ${self.nextPageUrl}`);
                 const response = await fetch(self.nextPageUrl);
                 if (!response.ok) throw new Error('Server status: ' + response.status);
 
@@ -473,6 +513,7 @@ window.Fotki.App = {
                 const result = self.extractData(newDoc);
                 
                 if (result.stopSignal) {
+                    console.warn(`🛑 Stop Signal received (Date Limit hit).`);
                     stopLoading = true;
                     self.nextPageUrl = null; 
                 } else {
@@ -486,7 +527,10 @@ window.Fotki.App = {
                     }
                     self.nextPageUrl = foundNext;
 
-                    if (!self.nextPageUrl) stopLoading = true;
+                    if (!self.nextPageUrl) {
+                        console.log("⚠️ No next page link found.");
+                        stopLoading = true;
+                    }
                 }
             }
             self.refreshView();
@@ -500,6 +544,7 @@ window.Fotki.App = {
                 return;
             }
         } finally {
+            console.groupEnd();
             self.isFetching = false;
             U.hideLoader();
             

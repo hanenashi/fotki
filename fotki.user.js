@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         fotki
 // @namespace    http://tampermonkey.net/
-// @version      4.6
+// @version      4.7
 // @description  Gallery with Lightbox (Mouse-Follow Zoom), Loading States & Settings
 // @author       kokochan
 // @match        https://www.okoun.cz/boards/*
@@ -10,16 +10,16 @@
 // @supportURL   https://github.com/hanenashi/fotki/issues
 // @updateURL    https://github.com/hanenashi/fotki/raw/main/fotki.user.js
 // @downloadURL  https://github.com/hanenashi/fotki/raw/main/fotki.user.js
-// @require      https://github.com/hanenashi/fotki/raw/main/src/styles.js?v=4.6
-// @require      https://github.com/hanenashi/fotki/raw/main/src/utils.js?v=4.6
-// @require      https://github.com/hanenashi/fotki/raw/main/src/lightbox.js?v=4.6
-// @require      https://github.com/hanenashi/fotki/raw/main/src/app.js?v=4.6
+// @require      https://github.com/hanenashi/fotki/raw/main/src/styles.js?v=4.7
+// @require      https://github.com/hanenashi/fotki/raw/main/src/utils.js?v=4.7
+// @require      https://github.com/hanenashi/fotki/raw/main/src/lightbox.js?v=4.7
+// @require      https://github.com/hanenashi/fotki/raw/main/src/app.js?v=4.7
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    // 1. Inject Styles (Handled by app.js mostly, but loader can do it too)
+    // 1. Inject Styles
     if (window.Fotki && window.Fotki.styles) {
         GM_addStyle(window.Fotki.styles);
     }
