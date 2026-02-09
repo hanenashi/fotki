@@ -1,6 +1,8 @@
 window.Fotki = window.Fotki || {};
 
 window.Fotki.styles = `
+    /* --- DESKTOP / BASE STYLES --- */
+
     /* Toggle Button */
     .head .menu a.gallery-toggle { color: #d35400 !important; font-weight: bold; cursor: pointer; margin-left: 10px; text-decoration: none; }
     .head .menu a.gallery-toggle:hover { color: #e67e22 !important; text-decoration: underline; }
@@ -21,19 +23,19 @@ window.Fotki.styles = `
     .fg-btn.close:hover { background: #c0392b; border-color: #e74c3c; }
     .fg-icon-btn { padding: 4px 8px; font-size: 16px; line-height: 1; }
 
-    /* Status Bar (New in v5.0) */
+    /* Status Bar */
     #fg-status-bar {
-        position: absolute; top: 50px; left: 0; width: 100%; height: 40px;
+        position: absolute; top: 45px; left: 0; width: 100%; height: 40px;
         background: rgba(44, 62, 80, 0.95); border-bottom: 1px solid #34495e;
         display: none; align-items: center; justify-content: space-between;
         padding: 0 20px; box-sizing: border-box; color: #ecf0f1; font-size: 13px;
         z-index: 60;
     }
     #fg-status-bar.active { display: flex; }
-    .fg-status-text { font-family: monospace; }
+    .fg-status-text { font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .fg-stop-btn {
         background: #c0392b; color: white; border: none; padding: 5px 15px;
-        border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px;
+        border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px; margin-left: 10px;
     }
     .fg-stop-btn:hover { background: #e74c3c; }
 
@@ -61,7 +63,6 @@ window.Fotki.styles = `
 
     /* Content Area */
     .fg-scroll-area { flex: 1; overflow-y: scroll; padding: 20px; margin-top: 0; }
-    /* Push content down if status bar is active - handled by JS class toggling */
     .fg-with-status .fg-scroll-area { margin-top: 40px; }
 
     /* Load More Button */
@@ -104,4 +105,35 @@ window.Fotki.styles = `
     .fg-lb-footer { height: 50px; background: #000; border-top: 1px solid #222; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; color: #888; font-size: 13px; z-index: 10; }
     .fg-lb-link { color: #d35400; text-decoration: none; margin-left: 10px; }
     .fg-lb-link:hover { text-decoration: underline; }
+
+    /* --- MOBILE RESPONSIVE (MAX 768px) --- */
+    @media (max-width: 768px) {
+        /* Header */
+        .fg-header { height: auto; flex-wrap: wrap; padding: 10px; gap: 10px; }
+        .fg-header-left { width: 100%; justify-content: space-between; }
+        .fg-title { font-size: 16px; }
+        .fg-btn { padding: 8px 12px; font-size: 14px; }
+        
+        /* Status Bar - Stacked */
+        #fg-status-bar { height: auto; padding: 10px; flex-direction: column; gap: 8px; text-align: center; }
+        .fg-with-status .fg-scroll-area { margin-top: 70px; }
+        .fg-stop-btn { width: 100%; margin: 0; padding: 8px; }
+
+        /* Settings Panel - Full Screen */
+        #fg-settings-panel { 
+            position: fixed; top: 10%; left: 5%; width: 90%; 
+            max-height: 80vh; right: auto; 
+            border: 1px solid #555; box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        }
+        .fg-setting-row input, .fg-setting-row select { font-size: 16px; padding: 8px; } /* Prevents iOS zoom */
+
+        /* Grids - 2 Column tight */
+        .fg-photo-grid { grid-template-columns: repeat(auto-fill, minmax(45%, 1fr)); gap: 6px; }
+        .fg-user-grid { grid-template-columns: repeat(auto-fill, minmax(45%, 1fr)); gap: 6px; }
+        
+        /* Lightbox - Finger Friendly */
+        .fg-lb-btn { width: 60px; height: 120px; font-size: 40px; background: rgba(0,0,0,0.3); }
+        .fg-lb-close { width: 50px; height: 50px; font-size: 30px; top: 10px; right: 10px; }
+        .fg-lb-footer { height: auto; padding: 10px; flex-direction: column; gap: 5px; text-align: center; }
+    }
 `;

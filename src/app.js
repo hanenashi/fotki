@@ -365,6 +365,7 @@ window.Fotki.App = {
 
         // Auto-swap if user confused From/To
         if (tsStart && tsStop && tsStart < tsStop) {
+            console.log("Fotki: Dates swapped by user. Fixing...");
             const temp = tsStart;
             tsStart = tsStop;
             tsStop = temp;
@@ -373,18 +374,25 @@ window.Fotki.App = {
         this.dateLimitMax = tsStart;
         this.dateLimitMin = tsStop;
         
+        // Start from current page
         let startUrl = window.location.href.split('?')[0]; 
         
         U.showLoader();
         this.resetData(); 
         
-        // Restore limits
+        // Restore limits after reset
         this.dateLimitMax = tsStart;
         this.dateLimitMin = tsStop;
         
         if (this.dateLimitMax) {
             this.isSeeking = true;
+            this.toggleStatusBar(true);
             this.updateStatus(`⏳ Cestuji v čase do ${new Date(this.dateLimitMax).toLocaleDateString()}...`);
+            // Show stop button at start
+            document.getElementById('fg-stop-btn').style.display = 'block';
+        } else {
+            this.isSeeking = false;
+            this.toggleStatusBar(false);
         }
         
         this.nextPageUrl = startUrl; 
@@ -398,6 +406,7 @@ window.Fotki.App = {
         
         U.showLoader();
         this.resetData();
+        this.toggleStatusBar(false);
         
         this.nextPageUrl = window.location.href.split('?')[0];
         this.loadMore(true);
@@ -930,9 +939,6 @@ window.Fotki.App = {
         root.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         self.isOpen = true;
-        
-        // Reset stop flag on open
-        self.stopRequested = false;
         
         if (self.allItems.length === 0) {
             U.showLoader();
