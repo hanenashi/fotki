@@ -10,10 +10,10 @@
 // @supportURL   https://github.com/hanenashi/fotki/issues
 // @updateURL    https://github.com/hanenashi/fotki/raw/main/fotki.user.js
 // @downloadURL  https://github.com/hanenashi/fotki/raw/main/fotki.user.js
-// @require      https://github.com/hanenashi/fotki/raw/main/src/styles.js?v=6.1
-// @require      https://github.com/hanenashi/fotki/raw/main/src/utils.js?v=6.1
-// @require      https://github.com/hanenashi/fotki/raw/main/src/lightbox.js?v=6.1
-// @require      https://github.com/hanenashi/fotki/raw/main/src/app.js?v=6.1
+// @require      https://github.com/hanenashi/fotki/raw/main/src/styles.js?v=6.2
+// @require      https://github.com/hanenashi/fotki/raw/main/src/utils.js?v=6.2
+// @require      https://github.com/hanenashi/fotki/raw/main/src/lightbox.js?v=6.2
+// @require      https://github.com/hanenashi/fotki/raw/main/src/app.js?v=6.2
 // ==/UserScript==
 
 (function() {
