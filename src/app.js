@@ -29,6 +29,18 @@ window.Fotki.App = {
 
     init: function() {
         const U = window.Fotki.Utils;
+        
+        // Ensure Styles are loaded (Double check for modular/bundled compatibility)
+        if (window.Fotki.styles) {
+            if (typeof GM_addStyle !== 'undefined') {
+                GM_addStyle(window.Fotki.styles);
+            } else {
+                const style = document.createElement('style');
+                style.textContent = window.Fotki.styles;
+                document.head.append(style);
+            }
+        }
+
         U.loadSettings();
         window.Fotki.Lightbox.init();
         this.injectButton();
@@ -343,9 +355,12 @@ window.Fotki.App = {
     findNextPage: function(doc) {
         let el = doc.querySelector('.pager .older a');
         if (el) return el.href;
+        
+        // Dot pagination fix
         const pagerLinks = doc.querySelectorAll('.pager a');
         for (let i = 0; i < pagerLinks.length; i++) {
-            if (pagerLinks[i].innerText.includes('Starší')) {
+            const t = pagerLinks[i].innerText.trim();
+            if (t.includes('Starší') || t === '>' || t === '›') {
                 return pagerLinks[i].href;
             }
         }
@@ -407,8 +422,6 @@ window.Fotki.App = {
 
         if (sortFn) this.allItems.sort(sortFn);
         
-        // Always sort folder contents by Date (Newest), regardless of global sort
-        // because sorting a user's photos by their own name is meaningless.
         const userContentSort = (a, b) => b.ts - a.ts;
         Object.keys(this.groupedData).forEach(u => {
             this.groupedData[u].sort(userContentSort);
@@ -429,7 +442,9 @@ window.Fotki.App = {
         }
 
         const targetCount = U.settings.batchSize;
-        const MAX_PAGES_LIMIT = 50; 
+        
+        // HYPER-PERSISTENCE for history search
+        const MAX_PAGES_LIMIT = self.dateLimitMin ? 500 : 50; 
         
         let loadedPhotos = 0;
         let pagesFetched = 0;
@@ -572,11 +587,9 @@ window.Fotki.App = {
 
         const users = Object.keys(this.groupedData);
         
-        // SORT USERS FOR ROOT VIEW
         const s = window.Fotki.Utils.settings.sortOrder;
         if (s === 'name_asc') users.sort((a, b) => a.localeCompare(b));
         else if (s === 'name_desc') users.sort((a, b) => b.localeCompare(a));
-        // Default (Date modes) relies on array order from extract (newest active)
 
         if (users.length === 0) {
             target.innerHTML = '<div style="color:#666; padding:20px; text-align:center;">Žádné fotky.</div>';
@@ -616,7 +629,6 @@ window.Fotki.App = {
 
             img.onerror = () => {
                 if (this.isTrustedHost(item.src) && img.src !== item.src) {
-                    console.log(`Fotki: Thumb failed for ${user}, trying original.`);
                     img.src = item.src;
                 } else {
                     tryNext();
@@ -702,7 +714,6 @@ window.Fotki.App = {
             img.onerror = () => {
                 clearTimeout(stuckTimer);
                 if (this.isTrustedHost(item.src) && img.src !== item.src) {
-                    console.log(`Fotki: Grid Thumb failed, trying original: ${item.src}`);
                     img.src = item.src;
                 } else {
                     handleFail();
