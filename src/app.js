@@ -21,15 +21,11 @@ window.Fotki.App = {
     dateLimitMin: null, // "Stop" Date (Oldest)
     dateLimitMax: null, // "Start" Date (Newest)
     isSeeking: false,
-    stopRequested: false, // Emergency stop flag
+    stopRequested: false,
 
     // Trusted for retry
     trustedHosts: [
-        'peklo.biz',
-        'opu.peklo.biz',
-        'pic.peklo.biz',
-        'flickr.com',
-        'static.flickr.com'
+        'peklo.biz', 'opu.peklo.biz', 'pic.peklo.biz', 'flickr.com', 'static.flickr.com'
     ],
 
     init: function() {
@@ -369,7 +365,6 @@ window.Fotki.App = {
 
         // Auto-swap if user confused From/To
         if (tsStart && tsStop && tsStart < tsStop) {
-            console.log("Fotki: Dates swapped by user. Fixing...");
             const temp = tsStart;
             tsStart = tsStop;
             tsStop = temp;
@@ -378,25 +373,18 @@ window.Fotki.App = {
         this.dateLimitMax = tsStart;
         this.dateLimitMin = tsStop;
         
-        // Start from current page
         let startUrl = window.location.href.split('?')[0]; 
         
         U.showLoader();
         this.resetData(); 
         
-        // Restore limits after reset
+        // Restore limits
         this.dateLimitMax = tsStart;
         this.dateLimitMin = tsStop;
         
         if (this.dateLimitMax) {
             this.isSeeking = true;
-            this.toggleStatusBar(true);
             this.updateStatus(`⏳ Cestuji v čase do ${new Date(this.dateLimitMax).toLocaleDateString()}...`);
-            // Show stop button at start
-            document.getElementById('fg-stop-btn').style.display = 'block';
-        } else {
-            this.isSeeking = false;
-            this.toggleStatusBar(false);
         }
         
         this.nextPageUrl = startUrl; 
@@ -410,7 +398,6 @@ window.Fotki.App = {
         
         U.showLoader();
         this.resetData();
-        this.toggleStatusBar(false);
         
         this.nextPageUrl = window.location.href.split('?')[0];
         this.loadMore(true);
@@ -436,7 +423,7 @@ window.Fotki.App = {
             pagerLinks.forEach(link => {
                 const linkTs = self.parseUrlDate(link.href);
                 if (linkTs) {
-                    // Only jump if link is still newer/equal to target
+                    // Logic: We want a link that is >= Target
                     if (linkTs >= self.dateLimitMax) {
                         // Find oldest safe link
                         if (bestLink === null || linkTs < bestLinkTs) {
@@ -499,7 +486,6 @@ window.Fotki.App = {
 
         // Did we reach target?
         if (this.isSeeking && this.dateLimitMax) {
-            // Stop seeking if page overlaps target OR is completely older than target
             if (oldestOnPage > 0 && oldestOnPage <= this.dateLimitMax) {
                 this.isSeeking = false;
                 this.updateStatus(`🎯 Nalezeno! Skenuji od ${new Date(this.dateLimitMax).toLocaleDateString()}...`);
@@ -514,13 +500,11 @@ window.Fotki.App = {
 
             if (this.isSeeking) return; // Don't collect while rewinding
 
-            // STOP if too old
             if (this.dateLimitMin && timestamp > 0 && timestamp < this.dateLimitMin) {
                 stopSignal = true;
                 return;
             }
 
-            // SKIP if too new (debris)
             if (this.dateLimitMax && timestamp > 0 && timestamp > (this.dateLimitMax + 86400000)) {
                 return; 
             }
@@ -584,6 +568,13 @@ window.Fotki.App = {
             btn.textContent = "Načítám..."; 
             btn.disabled = true; 
         }
+
+        // --- V5.2 UPDATE: Always show status bar and stop button ---
+        self.toggleStatusBar(true);
+        const stopBtn = document.getElementById('fg-stop-btn');
+        if(stopBtn) stopBtn.style.display = 'block';
+        self.stopRequested = false;
+        // -----------------------------------------------------------
 
         const targetCount = U.settings.batchSize;
         const MAX_PAGES = (self.dateLimitMin || self.isSeeking) ? 1000 : 50; 
@@ -652,9 +643,7 @@ window.Fotki.App = {
             self.isFetching = false;
             U.hideLoader();
             
-            // --- FIX: Hide Stop Button when done ---
-            const stopBtn = document.getElementById('fg-stop-btn');
-            
+            // --- V5.2 UPDATE: Clean up UI ---
             if (self.stopRequested) {
                 self.updateStatus(`🛑 Zastaveno. Nalezeno ${self.allItems.length} fotek.`);
                 if(stopBtn) stopBtn.style.display = 'none';
@@ -662,10 +651,10 @@ window.Fotki.App = {
                 self.updateStatus(`✅ Hotovo. Celkem ${self.allItems.length} fotek.`);
                 if(stopBtn) stopBtn.style.display = 'none';
             } else if (!self.isSeeking) {
-                // If standard loading finished (paused), hide it too
+                // If just paused (batch limit reached), hide stop but keep status
                 if(stopBtn) stopBtn.style.display = 'none';
             }
-            // ---------------------------------------
+            // --------------------------------
 
             const freshBtn = document.querySelector('.fg-load-more-btn');
             if (freshBtn) {
@@ -941,6 +930,9 @@ window.Fotki.App = {
         root.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         self.isOpen = true;
+        
+        // Reset stop flag on open
+        self.stopRequested = false;
         
         if (self.allItems.length === 0) {
             U.showLoader();
