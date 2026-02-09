@@ -18,10 +18,10 @@ window.Fotki.App = {
     isFetching: false,
     
     // Time Travel State
-    dateLimitMin: null, // "Stop" Date (Oldest)
-    dateLimitMax: null, // "Start" Date (Newest)
+    dateLimitMin: null, 
+    dateLimitMax: null,
     isSeeking: false,
-    stopRequested: false, // Emergency stop flag
+    stopRequested: false,
 
     // Trusted for retry
     trustedHosts: [
@@ -54,35 +54,41 @@ window.Fotki.App = {
         this.bindKeys();
     },
 
-    // --- V5.6: Dynamic Mobile Viewport Toggle ---
+    // --- V5.7: Enhanced Viewport Toggle ---
     toggleViewport: function(enable) {
-        let meta = document.querySelector('meta[name="viewport"]');
+        let meta = document.getElementById('fg-temp-viewport');
+        
         if (enable) {
-            if (!meta) {
+            // Enable Mobile View
+            if (!meta && !document.querySelector('meta[name="viewport"]')) {
                 meta = document.createElement('meta');
                 meta.name = 'viewport';
                 meta.id = 'fg-temp-viewport';
-                // Force mobile scaling
                 meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
                 document.head.appendChild(meta);
             }
         } else {
-            // Remove our temp tag to restore Desktop Mode for Okoun
-            const tempMeta = document.getElementById('fg-temp-viewport');
-            if (tempMeta) tempMeta.remove();
+            // Disable Mobile View (Restore Desktop)
+            if (meta) {
+                // Step 1: Force "Desktop" width briefly to trigger zoom-out
+                meta.content = 'width=1024, initial-scale=0.1'; 
+                
+                // Step 2: Remove the tag entirely after a tiny delay
+                // This forces the browser to recalculate the layout for the desktop site
+                setTimeout(() => {
+                    meta.remove();
+                }, 50);
+            }
         }
     },
-    // --------------------------------------------
+    // --------------------------------------
 
     injectButton: function() {
         const menu = document.querySelector('.head .nav .menu');
         if (!menu) return;
         const btn = document.createElement('a');
         btn.className = 'gallery-toggle';
-        
-        // Simple text
         btn.textContent = 'Fotki'; 
-        
         btn.onclick = (e) => { 
             e.preventDefault(); 
             this.toggle(); 
@@ -426,7 +432,8 @@ window.Fotki.App = {
             this.isSeeking = true;
             this.toggleStatusBar(true);
             this.updateStatus(`⏳ Cestuji v čase do ${new Date(this.dateLimitMax).toLocaleDateString()}...`);
-            document.getElementById('fg-stop-btn').style.display = 'block';
+            const stopBtn = document.getElementById('fg-stop-btn');
+            if (stopBtn) stopBtn.style.display = 'block';
         } else {
             this.isSeeking = false;
             this.toggleStatusBar(false);
