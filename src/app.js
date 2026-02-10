@@ -103,7 +103,7 @@ window.Fotki.App = {
                 </div>
                 
                 <div class="fg-setting-row">
-                    <label>Animace (GIF)</label>
+                    <label>Animace (GIF/WebP/AVIF)</label>
                     <select id="fg-opt-anim">
                         <option value="off">Vypnuto (Šetří data)</option>
                         <option value="hover">Přehrát při najetí myší</option>
@@ -181,8 +181,6 @@ window.Fotki.App = {
                 root.querySelector('#fg-opt-group').checked = currentSettings.groupByUser;
                 root.querySelector('#fg-opt-sort').value = currentSettings.sortOrder;
                 root.querySelector('#fg-opt-batch').value = currentSettings.batchSize;
-                
-                // V6.5: Load Anim setting (default 'off')
                 root.querySelector('#fg-opt-anim').value = currentSettings.animMode || 'off';
                 
                 if (Array.isArray(currentSettings.deadHosts)) {
@@ -210,12 +208,10 @@ window.Fotki.App = {
             if (val < 10) val = 10; 
             U.saveSettings({ batchSize: val }); 
         };
-        // V6.5: Anim setting handler
         root.querySelector('#fg-opt-anim').onchange = (e) => {
             U.saveSettings({ animMode: e.target.value });
             this.forceRefresh();
         };
-        
         root.querySelector('#fg-opt-blacklist').onchange = (e) => { 
             const raw = e.target.value; 
             const list = raw.split('\n').map(s => s.trim()).filter(s => s.length > 0); 
@@ -355,7 +351,7 @@ window.Fotki.App = {
     },
 
     getOpuThumb: function(url, postTs) {
-        // V6.5: Always skip Thumb logic for GIFs to avoid Dead Fish
+        // Only skip GIF logic. Allow WebP/AVIF to try and load.
         if (this.isGif(url)) return url;
 
         if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) {
@@ -865,36 +861,19 @@ window.Fotki.App = {
         const U = window.Fotki.Utils;
         const animMode = U.settings.animMode || 'off'; // 'off', 'hover', 'full'
 
-        photos.forEach((item, index) => { 
-            const card = document.createElement('div'); 
-            card.className = 'fg-photo-card'; 
-            const userHtml = showUserLabel ? `<span class="fg-photo-user">${item.user}</span>` : ''; 
+        // Helpers for swapping
+        const createPlaceholder = (item) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'fg-gif-placeholder';
+            wrap.innerHTML = `
+                <div class="fg-gif-label">ANIM</div>
+                <div class="fg-gif-hint">${animMode === 'hover' ? '▶ Přejet myší' : 'Kliknout'}</div>
+            `;
             
-            // --- V6.5: Smart GIF Handling ---
-            let mediaContent = '';
-            
-            if (item.isGif && animMode !== 'full') {
-                // Placeholder Mode (Off or Hover)
-                mediaContent = `
-                    <div class="fg-gif-placeholder" data-src="${item.src}">
-                        <div class="fg-gif-label">GIF</div>
-                        <div class="fg-gif-hint">${animMode === 'hover' ? '▶ Přejet myší' : 'Kliknout'}</div>
-                    </div>
-                `;
-            } else {
-                // Normal Image (or GIF in Full mode)
-                mediaContent = `<img src="${item.thumb}" loading="lazy" data-orig="${item.src}">`;
-            }
-
-            card.innerHTML = `<div class="fg-photo-box">${mediaContent}</div><div class="fg-photo-meta"><div>${userHtml}<span style="color:#aaa">${item.date}</span></div><a href="${item.link}" target="_blank" class="fg-link" title="Otevřít příspěvek v novém okně">➜</a></div>`; 
-            
-            // Hover Logic for GIFs
-            if (item.isGif && animMode === 'hover') {
-                const box = card.querySelector('.fg-photo-box');
-                const placeholder = box.querySelector('.fg-gif-placeholder');
-                
-                box.onmouseenter = () => {
-                    if (!box.querySelector('img')) {
+            if (animMode === 'hover') {
+                wrap.onmouseenter = (e) => {
+                    const parent = e.target.closest('.fg-photo-box');
+                    if (parent && !parent.querySelector('img')) {
                         const img = document.createElement('img');
                         img.src = item.src;
                         img.style.position = 'absolute';
@@ -902,47 +881,81 @@ window.Fotki.App = {
                         img.style.width = '100%'; img.style.height = '100%';
                         img.style.objectFit = 'contain';
                         img.style.background = '#111';
-                        box.appendChild(img);
+                        parent.appendChild(img);
                     }
                 };
-                
-                box.onmouseleave = () => {
-                    const img = box.querySelector('img');
-                    if (img) img.remove(); // Stop animation by removing
+                wrap.onmouseleave = (e) => {
+                    const parent = e.target.closest('.fg-photo-box');
+                    if (parent) {
+                        const img = parent.querySelector('img');
+                        if (img) img.remove();
+                    }
                 };
+            }
+            return wrap;
+        };
+
+        photos.forEach((item, index) => { 
+            const card = document.createElement('div'); 
+            card.className = 'fg-photo-card'; 
+            const userHtml = showUserLabel ? `<span class="fg-photo-user">${item.user}</span>` : ''; 
+            
+            // Step 1: Known GIFs always get placeholder (unless Full mode)
+            let isKnownGif = item.isGif;
+            let initialContent = '';
+
+            if (isKnownGif && animMode !== 'full') {
+                initialContent = ''; // Will append placeholder element
+            } else {
+                initialContent = `<img src="${item.thumb}" loading="lazy" data-orig="${item.src}">`;
             }
 
-            // Normal Error Handling (only if img exists initially)
-            const img = card.querySelector('img'); 
-            if (img) {
-                const handleFail = () => { 
-                    card.remove(); 
-                    this.pruneItem(item); 
-                }; 
-                
-                const stuckTimer = setTimeout(() => { 
-                    if (!img.complete || img.naturalWidth === 0) handleFail(); 
-                }, 15000); 
-                
-                img.onerror = () => { 
-                    clearTimeout(stuckTimer); 
-                    if (this.isTrustedHost(item.src) && img.src !== item.src) { 
-                        img.src = item.src; 
-                    } else { 
-                        handleFail(); 
-                    } 
-                }; 
-                
-                img.onload = () => { 
-                    clearTimeout(stuckTimer); 
-                    if (img.naturalWidth === 218 && img.naturalHeight === 218) {
-                        if (img.src !== item.src) { img.src = item.src; return; }
-                    }
-                    if (img.naturalWidth > 0 && img.naturalWidth < 50) handleFail(); 
-                }; 
+            card.innerHTML = `<div class="fg-photo-box">${initialContent}</div><div class="fg-photo-meta"><div>${userHtml}<span style="color:#aaa">${item.date}</span></div><a href="${item.link}" target="_blank" class="fg-link" title="Otevřít příspěvek v novém okně">➜</a></div>`; 
+            
+            const box = card.querySelector('.fg-photo-box');
+
+            if (isKnownGif && animMode !== 'full') {
+                box.appendChild(createPlaceholder(item));
+            } else {
+                // Check if the loaded image is actually a "Dead Fish" (Animated WebP/AVIF detector)
+                const img = box.querySelector('img');
+                if (img) {
+                    const handleFail = () => { card.remove(); this.pruneItem(item); };
+                    
+                    const stuckTimer = setTimeout(() => { 
+                        if (!img.complete || img.naturalWidth === 0) handleFail(); 
+                    }, 15000); 
+                    
+                    img.onerror = () => { 
+                        clearTimeout(stuckTimer); 
+                        if (this.isTrustedHost(item.src) && img.src !== item.src) { img.src = item.src; } 
+                        else { handleFail(); } 
+                    }; 
+                    
+                    img.onload = () => { 
+                        clearTimeout(stuckTimer); 
+                        // DEAD FISH DETECTOR (218x218)
+                        // If it's the dead fish, and we are NOT in 'full' mode, switch to placeholder
+                        if (img.naturalWidth === 218 && img.naturalHeight === 218) {
+                            if (img.src !== item.src) { 
+                                // This is a thumbnail that failed.
+                                if (animMode !== 'full') {
+                                    box.innerHTML = ''; // Clear dead fish
+                                    box.appendChild(createPlaceholder(item));
+                                    return;
+                                } else {
+                                    // Full mode: Load full res
+                                    img.src = item.src; 
+                                    return; 
+                                }
+                            }
+                        }
+                        if (img.naturalWidth > 0 && img.naturalWidth < 50) handleFail(); 
+                    }; 
+                }
             }
             
-            card.querySelector('.fg-photo-box').onclick = () => { 
+            box.onclick = () => { 
                 this.openLightbox(index); 
             }; 
             
