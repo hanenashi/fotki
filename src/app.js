@@ -26,10 +26,14 @@ window.Fotki.App = {
         'peklo.biz', 'opu.peklo.biz', 'pic.peklo.biz', 'flickr.com', 'static.flickr.com'
     ],
 
+    // Date when Opu thumbs were introduced (Nov 27, 2024)
+    OPU_THUMB_LIMIT: new Date(2024, 10, 27).getTime(), 
+
     init: function() {
         const U = window.Fotki.Utils;
         
-        // Inject Styles
+        this.fixViewport();
+
         if (window.Fotki.styles) {
             if (typeof GM_addStyle !== 'undefined') {
                 GM_addStyle(window.Fotki.styles);
@@ -48,9 +52,17 @@ window.Fotki.App = {
         this.bindKeys();
     },
 
-    // Mobile Detection (Regex approach)
     detectMobile: function() {
         return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+    },
+
+    fixViewport: function() {
+        if (!document.querySelector('meta[name="viewport"]')) {
+            const meta = document.createElement('meta');
+            meta.name = 'viewport';
+            meta.content = 'width=device-width, initial-scale=1.0';
+            document.head.appendChild(meta);
+        }
     },
 
     injectButton: function() {
@@ -64,13 +76,13 @@ window.Fotki.App = {
         menu.appendChild(btn);
     },
 
+    // ... (buildOverlay omitted for brevity, no changes) ...
     buildOverlay: function() {
         const U = window.Fotki.Utils;
         const version = (typeof GM_info !== 'undefined' && GM_info.script) ? GM_info.script.version : 'Dev';
         const root = document.createElement('div');
         root.id = 'fotki-gallery-root';
         
-        // Apply "Giant Mode" class if mobile
         if (this.detectMobile()) {
             root.classList.add('fg-is-mobile');
         }
@@ -181,7 +193,6 @@ window.Fotki.App = {
             }
         };
 
-        // Mobile Close Button
         root.querySelector('#fg-settings-close-mobile').onclick = () => {
             setPanel.classList.remove('active');
         };
@@ -219,6 +230,7 @@ window.Fotki.App = {
 
         document.body.appendChild(root);
     },
+    // ...
 
     buildLightbox: function() { 
         const lb = document.createElement('div'); 
@@ -279,8 +291,6 @@ window.Fotki.App = {
         }, true); 
     },
 
-    // --- Core Logic ---
-
     isSafeUrl: function(url) { 
         const U = window.Fotki.Utils; 
         if (!U.settings || !Array.isArray(U.settings.deadHosts)) return true; 
@@ -335,14 +345,22 @@ window.Fotki.App = {
         } 
     },
 
-    getOpuThumb: function(url) { 
-        if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) { 
-            const parts = url.split('/'); 
-            const filename = parts.pop(); 
-            return parts.join('/') + '/thumbs/' + filename; 
-        } 
-        return url; 
+    // --- V6.3: Date-Aware Thumbnail Logic ---
+    getOpuThumb: function(url, postTs) {
+        if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) {
+            // Layer 1: Date Efficiency Check
+            // If post is older than Nov 27 2024, don't try the thumb at all.
+            if (postTs && postTs < this.OPU_THUMB_LIMIT) {
+                return url;
+            }
+            
+            const parts = url.split('/');
+            const filename = parts.pop();
+            return parts.join('/') + '/thumbs/' + filename;
+        }
+        return url;
     },
+    // ---------------------------------------
 
     resetData: function() {
         this.groupedData = {};
@@ -532,7 +550,8 @@ window.Fotki.App = {
 
                         const item = {
                             src: safeSrc, 
-                            thumb: this.getOpuThumb(safeSrc),
+                            // Pass timestamp to thumb generator
+                            thumb: this.getOpuThumb(safeSrc, timestamp), 
                             link: link, date: dateText, ts: timestamp, user: user
                         };
                         
@@ -864,6 +883,17 @@ window.Fotki.App = {
             
             img.onload = () => { 
                 clearTimeout(stuckTimer); 
+                
+                // --- Layer 2: Dead Fish Detector ---
+                // If the loaded image is exactly 218x218px (Dead Fish), and we are trying to show a thumb...
+                if (img.naturalWidth === 218 && img.naturalHeight === 218) {
+                    if (img.src !== item.src) {
+                        // This means the thumbnail is broken (the fish). Revert to full size.
+                        img.src = item.src;
+                        return;
+                    }
+                }
+                
                 if (img.naturalWidth > 0 && img.naturalWidth < 50) handleFail(); 
             }; 
             
