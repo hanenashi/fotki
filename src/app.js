@@ -26,8 +26,6 @@ window.Fotki.App = {
         'peklo.biz', 'opu.peklo.biz', 'pic.peklo.biz', 'flickr.com', 'static.flickr.com'
     ],
 
-    OPU_THUMB_LIMIT: new Date(2024, 10, 27).getTime(), 
-
     init: function() {
         const U = window.Fotki.Utils;
         
@@ -346,17 +344,23 @@ window.Fotki.App = {
         } 
     },
 
-    isGif: function(url) {
-        return url.match(/\.gif$/i) !== null;
+    // V6.8: Expanded Check for all Anim formats
+    isAnim: function(url) {
+        return url.match(/\.(gif|webp|avif)$/i) !== null;
     },
 
+    // V6.8: Aggressively block thumb generation for anims on Opu
     getOpuThumb: function(url, postTs) {
-        if (this.isGif(url)) return url; // GIFs never have thumbs
+        if (this.isAnim(url)) return url; // Don't even try generating a thumb for these
 
         if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) {
-            if (postTs && postTs < this.OPU_THUMB_LIMIT) {
+            // Layer 1: Date check for standard JPG/PNGs
+            // (Nov 27, 2024 limit still applies to standard images)
+            const opuThumbLimit = new Date(2024, 10, 27).getTime();
+            if (postTs && postTs < opuThumbLimit) {
                 return url;
             }
+            
             const parts = url.split('/');
             const filename = parts.pop();
             return parts.join('/') + '/thumbs/' + filename;
@@ -364,7 +368,6 @@ window.Fotki.App = {
         return url;
     },
 
-    // ... (resetData, updateStatus, etc. - no changes) ...
     resetData: function() {
         this.groupedData = {};
         this.allItems = [];
@@ -555,7 +558,7 @@ window.Fotki.App = {
                             src: safeSrc, 
                             thumb: this.getOpuThumb(safeSrc, timestamp), 
                             link: link, date: dateText, ts: timestamp, user: user,
-                            isGif: this.isGif(safeSrc)
+                            isAnim: this.isAnim(safeSrc)
                         };
                         
                         this.seenUrls.add(safeSrc); 
@@ -876,12 +879,14 @@ window.Fotki.App = {
                     if (parent && !parent.querySelector('img')) {
                         const img = document.createElement('img');
                         img.src = item.src;
-                        img.className = 'fg-hover-anim'; // Add class for pointer-events: none
+                        img.className = 'fg-hover-anim'; // IMPORTANT: pointer-events: none!
                         img.style.position = 'absolute';
                         img.style.top = '0'; img.style.left = '0';
                         img.style.width = '100%'; img.style.height = '100%';
                         img.style.objectFit = 'contain';
                         img.style.background = '#111';
+                        // Fade in effect
+                        img.onload = () => img.classList.add('loaded');
                         parent.appendChild(img);
                     }
                 };
@@ -909,65 +914,50 @@ window.Fotki.App = {
             card.className = 'fg-photo-card'; 
             const userHtml = showUserLabel ? `<span class="fg-photo-user">${item.user}</span>` : ''; 
             
-            // Build Structure
             card.innerHTML = `<div class="fg-photo-box"></div><div class="fg-photo-meta"><div>${userHtml}<span style="color:#aaa">${item.date}</span></div><a href="${item.link}" target="_blank" class="fg-link" title="Otevřít příspěvek v novém okně">➜</a></div>`; 
             
             const box = card.querySelector('.fg-photo-box');
 
-            // --- V6.7: Silent Fallback Logic ---
+            // --- V6.8: Clean Logic for Anims ---
             let usePlaceholder = false;
             let initialImg = null;
 
-            if (item.isGif) {
-                // GIFs: If 'Full' -> Load Source. Else -> Placeholder.
+            if (item.isAnim) {
+                // Animation Logic:
+                // If 'full' mode -> Load source directly.
+                // Else -> Show Placeholder (No thumb attempts for anims on Opu!)
                 if (animMode === 'full') {
-                    initialImg = createFullImage(item.src); // Skip thumb for GIFs always
+                    initialImg = createFullImage(item.src);
                 } else {
                     usePlaceholder = true;
                 }
             } else {
-                // WebP/AVIF/Static: Try Thumb first (unless Full mode for suspected anim?)
-                // If animMode is 'full', we prefer full quality/anim over broken thumbs.
-                // But for standard images, thumb is better.
-                // Compromise: Try thumb. If it fails -> Fallback.
-                
+                // Standard Image Logic:
+                // Try to load thumbnail.
                 initialImg = createFullImage(item.thumb);
             }
 
             if (usePlaceholder) {
                 box.appendChild(createPlaceholder(item));
             } else if (initialImg) {
-                // Attach error/load handlers BEFORE appending
+                // Attach error/load handlers for Standard/Full
                 
-                // 1. Silent Error (404) -> Fallback to Placeholder/Full
                 initialImg.onerror = () => {
-                    // console.log("Thumb failed (404), swapping to placeholder.");
-                    box.innerHTML = ''; // Remove broken img
-                    if (animMode === 'full') {
-                        box.appendChild(createFullImage(item.src)); // Just load full
-                    } else {
-                        box.appendChild(createPlaceholder(item));
-                    }
+                    // Fallback to placeholder if thumb/full fails
+                    box.innerHTML = '';
+                    box.appendChild(createPlaceholder(item));
                 };
 
-                // 2. Load Check (Dead Fish Detector)
                 initialImg.onload = function() {
-                    // Check for Dead Fish (218x218)
+                    // Dead Fish Detector (218x218)
+                    // If we somehow still got a dead fish (e.g. non-Opu host, or weird edge case)
                     if (this.naturalWidth === 218 && this.naturalHeight === 218) {
-                        // It is a fish!
                         if (this.src !== item.src) {
-                            // Thumb failed. Swap.
                             box.innerHTML = '';
-                            if (animMode === 'full') {
-                                box.appendChild(createFullImage(item.src));
-                            } else {
-                                box.appendChild(createPlaceholder(item));
-                            }
+                            box.appendChild(createPlaceholder(item));
                             return;
                         }
                     }
-                    
-                    // If we are here, image is good. Fade it in.
                     this.classList.add('loaded');
                 };
 

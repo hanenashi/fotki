@@ -74,8 +74,15 @@ window.Fotki.styles = `
     .fg-gif-hint { margin-top: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
     .fg-photo-card:hover .fg-gif-placeholder { background: #0a0a0a; }
 
-    /* V6.7 Fix: Pointer events none to prevent flicker */
-    .fg-hover-anim { pointer-events: none; z-index: 20; background: #000; }
+    /* V6.8: Fixed Overlay Styles */
+    .fg-hover-anim { 
+        pointer-events: none; /* Mouse ignores image, hits container below */
+        z-index: 50; 
+        background: #000;
+        opacity: 0; 
+        transition: opacity 0.1s;
+    }
+    .fg-hover-anim.loaded { opacity: 1; }
 
     #fg-lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 99950; display: none; flex-direction: column; }
     .fg-lb-canvas { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
