@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         fotki
 // @namespace    http://tampermonkey.net/
-// @version      7.1
+// @version      7.2
 // @description  Gallery with Lightbox (Mouse-Follow Zoom), Loading States & Settings
 // @author       kokochan
 // @match        https://www.okoun.cz/boards/*
@@ -13,7 +13,7 @@
 // @require      https://github.com/hanenashi/fotki/raw/main/src/styles.js?v=7.1
 // @require      https://github.com/hanenashi/fotki/raw/main/src/utils.js?v=7.1
 // @require      https://github.com/hanenashi/fotki/raw/main/src/lightbox.js?v=7.1
-// @require      https://github.com/hanenashi/fotki/raw/main/src/app.js?v=7.1
+// @require      https://github.com/hanenashi/fotki/raw/main/src/app.js?v=7.2
 // ==/UserScript==
 
 (function() {
