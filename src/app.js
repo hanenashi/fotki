@@ -351,8 +351,7 @@ window.Fotki.App = {
     },
 
     getOpuThumb: function(url, postTs) {
-        // Only skip GIF logic. Allow WebP/AVIF to try and load.
-        if (this.isGif(url)) return url;
+        if (this.isGif(url)) return url; // GIFs never have thumbs
 
         if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) {
             if (postTs && postTs < this.OPU_THUMB_LIMIT) {
@@ -365,6 +364,7 @@ window.Fotki.App = {
         return url;
     },
 
+    // ... (resetData, updateStatus, etc. - no changes) ...
     resetData: function() {
         this.groupedData = {};
         this.allItems = [];
@@ -861,7 +861,7 @@ window.Fotki.App = {
         const U = window.Fotki.Utils;
         const animMode = U.settings.animMode || 'off'; // 'off', 'hover', 'full'
 
-        // Helpers for swapping
+        // Helpers
         const createPlaceholder = (item) => {
             const wrap = document.createElement('div');
             wrap.className = 'fg-gif-placeholder';
@@ -876,6 +876,7 @@ window.Fotki.App = {
                     if (parent && !parent.querySelector('img')) {
                         const img = document.createElement('img');
                         img.src = item.src;
+                        img.className = 'fg-hover-anim'; // Add class for pointer-events: none
                         img.style.position = 'absolute';
                         img.style.top = '0'; img.style.left = '0';
                         img.style.width = '100%'; img.style.height = '100%';
@@ -895,64 +896,82 @@ window.Fotki.App = {
             return wrap;
         };
 
+        const createFullImage = (src) => {
+            const img = document.createElement('img');
+            img.loading = 'lazy';
+            img.dataset.orig = src;
+            img.src = src;
+            return img;
+        };
+
         photos.forEach((item, index) => { 
             const card = document.createElement('div'); 
             card.className = 'fg-photo-card'; 
             const userHtml = showUserLabel ? `<span class="fg-photo-user">${item.user}</span>` : ''; 
             
-            // Step 1: Known GIFs always get placeholder (unless Full mode)
-            let isKnownGif = item.isGif;
-            let initialContent = '';
-
-            if (isKnownGif && animMode !== 'full') {
-                initialContent = ''; // Will append placeholder element
-            } else {
-                initialContent = `<img src="${item.thumb}" loading="lazy" data-orig="${item.src}">`;
-            }
-
-            card.innerHTML = `<div class="fg-photo-box">${initialContent}</div><div class="fg-photo-meta"><div>${userHtml}<span style="color:#aaa">${item.date}</span></div><a href="${item.link}" target="_blank" class="fg-link" title="Otevřít příspěvek v novém okně">➜</a></div>`; 
+            // Build Structure
+            card.innerHTML = `<div class="fg-photo-box"></div><div class="fg-photo-meta"><div>${userHtml}<span style="color:#aaa">${item.date}</span></div><a href="${item.link}" target="_blank" class="fg-link" title="Otevřít příspěvek v novém okně">➜</a></div>`; 
             
             const box = card.querySelector('.fg-photo-box');
 
-            if (isKnownGif && animMode !== 'full') {
-                box.appendChild(createPlaceholder(item));
-            } else {
-                // Check if the loaded image is actually a "Dead Fish" (Animated WebP/AVIF detector)
-                const img = box.querySelector('img');
-                if (img) {
-                    const handleFail = () => { card.remove(); this.pruneItem(item); };
-                    
-                    const stuckTimer = setTimeout(() => { 
-                        if (!img.complete || img.naturalWidth === 0) handleFail(); 
-                    }, 15000); 
-                    
-                    img.onerror = () => { 
-                        clearTimeout(stuckTimer); 
-                        if (this.isTrustedHost(item.src) && img.src !== item.src) { img.src = item.src; } 
-                        else { handleFail(); } 
-                    }; 
-                    
-                    img.onload = () => { 
-                        clearTimeout(stuckTimer); 
-                        // DEAD FISH DETECTOR (218x218)
-                        // If it's the dead fish, and we are NOT in 'full' mode, switch to placeholder
-                        if (img.naturalWidth === 218 && img.naturalHeight === 218) {
-                            if (img.src !== item.src) { 
-                                // This is a thumbnail that failed.
-                                if (animMode !== 'full') {
-                                    box.innerHTML = ''; // Clear dead fish
-                                    box.appendChild(createPlaceholder(item));
-                                    return;
-                                } else {
-                                    // Full mode: Load full res
-                                    img.src = item.src; 
-                                    return; 
-                                }
-                            }
-                        }
-                        if (img.naturalWidth > 0 && img.naturalWidth < 50) handleFail(); 
-                    }; 
+            // --- V6.7: Silent Fallback Logic ---
+            let usePlaceholder = false;
+            let initialImg = null;
+
+            if (item.isGif) {
+                // GIFs: If 'Full' -> Load Source. Else -> Placeholder.
+                if (animMode === 'full') {
+                    initialImg = createFullImage(item.src); // Skip thumb for GIFs always
+                } else {
+                    usePlaceholder = true;
                 }
+            } else {
+                // WebP/AVIF/Static: Try Thumb first (unless Full mode for suspected anim?)
+                // If animMode is 'full', we prefer full quality/anim over broken thumbs.
+                // But for standard images, thumb is better.
+                // Compromise: Try thumb. If it fails -> Fallback.
+                
+                initialImg = createFullImage(item.thumb);
+            }
+
+            if (usePlaceholder) {
+                box.appendChild(createPlaceholder(item));
+            } else if (initialImg) {
+                // Attach error/load handlers BEFORE appending
+                
+                // 1. Silent Error (404) -> Fallback to Placeholder/Full
+                initialImg.onerror = () => {
+                    // console.log("Thumb failed (404), swapping to placeholder.");
+                    box.innerHTML = ''; // Remove broken img
+                    if (animMode === 'full') {
+                        box.appendChild(createFullImage(item.src)); // Just load full
+                    } else {
+                        box.appendChild(createPlaceholder(item));
+                    }
+                };
+
+                // 2. Load Check (Dead Fish Detector)
+                initialImg.onload = function() {
+                    // Check for Dead Fish (218x218)
+                    if (this.naturalWidth === 218 && this.naturalHeight === 218) {
+                        // It is a fish!
+                        if (this.src !== item.src) {
+                            // Thumb failed. Swap.
+                            box.innerHTML = '';
+                            if (animMode === 'full') {
+                                box.appendChild(createFullImage(item.src));
+                            } else {
+                                box.appendChild(createPlaceholder(item));
+                            }
+                            return;
+                        }
+                    }
+                    
+                    // If we are here, image is good. Fade it in.
+                    this.classList.add('loaded');
+                };
+
+                box.appendChild(initialImg);
             }
             
             box.onclick = () => { 

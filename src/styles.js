@@ -21,7 +21,6 @@ window.Fotki.styles = `
     #fg-status-bar.active { display: flex; }
     .fg-stop-btn { background: #c0392b; color: white; border: none; padding: 5px 15px; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 12px; margin-left: 10px; }
 
-    /* Settings Panel */
     #fg-settings-panel { 
         position: absolute; top: 50px; right: 15px; width: 300px; 
         background: #222; border: 1px solid #444; border-radius: 4px; padding: 15px; 
@@ -31,7 +30,6 @@ window.Fotki.styles = `
     #fg-settings-panel.active { display: block; }
     
     .fg-settings-close-bar { display: none; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #444; text-align: right; }
-    
     .fg-setting-row { margin-bottom: 15px; box-sizing: border-box; }
     .fg-setting-row label { display: block; color: #aaa; margin-bottom: 5px; font-size: 12px; }
     .fg-setting-row select, .fg-setting-row input, .fg-setting-row textarea { background: #111; border: 1px solid #444; color: #eee; padding: 5px; width: 100%; border-radius: 3px; box-sizing: border-box; }
@@ -62,18 +60,22 @@ window.Fotki.styles = `
     .fg-user-info { padding: 8px; text-align: center; border-top: 1px solid #333; }
     .fg-user-name { font-weight: bold; color: #eee; display: block; font-size: 13px; }
     
-    .fg-photo-box { height: 220px; background: #111; display: flex; align-items: center; justify-content: center; cursor: zoom-in; position: relative; }
-    .fg-photo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .fg-photo-box { height: 220px; background: #111; display: flex; align-items: center; justify-content: center; cursor: zoom-in; position: relative; overflow: hidden; }
+    .fg-photo-box img { max-width: 100%; max-height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.2s; }
+    .fg-photo-box img.loaded { opacity: 1; }
+    
     .fg-photo-meta { padding: 6px 10px; font-size: 11px; color: #777; border-top: 1px solid #222; display: flex; justify-content: space-between; }
     .fg-photo-user { color: #d35400; font-weight: bold; margin-right: 5px; }
     .fg-link { color: #666; text-decoration: none; padding: 0 5px; }
     .fg-link:hover { color: #fff; background: #d35400; border-radius: 3px; }
 
-    /* V6.5: GIF Placeholder Styles */
-    .fg-gif-placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; color: #555; }
+    .fg-gif-placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; color: #555; cursor: zoom-in; }
     .fg-gif-label { font-size: 20px; font-weight: bold; border: 2px solid #333; padding: 5px 12px; border-radius: 6px; color: #d35400; border-color: #d35400; }
     .fg-gif-hint { margin-top: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
     .fg-photo-card:hover .fg-gif-placeholder { background: #0a0a0a; }
+
+    /* V6.7 Fix: Pointer events none to prevent flicker */
+    .fg-hover-anim { pointer-events: none; z-index: 20; background: #000; }
 
     #fg-lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 99950; display: none; flex-direction: column; }
     .fg-lb-canvas { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
@@ -101,12 +103,12 @@ window.Fotki.styles = `
 
     .fg-is-mobile #fg-settings-panel { 
         top: 0; left: 0; width: 100%; height: 100%; max-height: 100%; 
-        padding: 20px; border: none; overflow-y: scroll; /* Allow scroll */
+        padding: 20px; border: none; overflow-y: scroll; 
         display: none; flex-direction: column;
     }
     .fg-is-mobile #fg-settings-panel.active { display: flex; }
     
-    .fg-is-mobile .fg-settings-close-bar { display: block; } /* Show close btn */
+    .fg-is-mobile .fg-settings-close-bar { display: block; }
     .fg-is-mobile .fg-settings-close-btn { 
         font-size: 28px; padding: 15px 30px; background: #c0392b; 
         color: white; border: none; width: 100%; border-radius: 5px; 
@@ -116,7 +118,7 @@ window.Fotki.styles = `
     .fg-is-mobile .fg-setting-row label { font-size: 24px; margin-bottom: 10px; }
     .fg-is-mobile input, .fg-is-mobile select, .fg-is-mobile textarea { 
         font-size: 28px; padding: 15px; height: auto; 
-        max-width: 100%; /* Prevent overflow */
+        max-width: 100%; 
     }
     .fg-is-mobile input[type="checkbox"] { transform: scale(2); margin-right: 20px; }
     .fg-is-mobile .fg-action-btn, .fg-is-mobile .fg-reset-btn { font-size: 24px; padding: 20px; }
