@@ -26,14 +26,11 @@ window.Fotki.App = {
         'peklo.biz', 'opu.peklo.biz', 'pic.peklo.biz', 'flickr.com', 'static.flickr.com'
     ],
 
-    // Date when Opu thumbs were introduced (Nov 27, 2024)
     OPU_THUMB_LIMIT: new Date(2024, 10, 27).getTime(), 
 
     init: function() {
         const U = window.Fotki.Utils;
         
-        // V6.4 FIX: Removed fixViewport(). Pure CSS scaling only.
-
         if (window.Fotki.styles) {
             if (typeof GM_addStyle !== 'undefined') {
                 GM_addStyle(window.Fotki.styles);
@@ -73,7 +70,6 @@ window.Fotki.App = {
         const root = document.createElement('div');
         root.id = 'fotki-gallery-root';
         
-        // Apply Giant Mode class if mobile
         if (this.detectMobile()) {
             root.classList.add('fg-is-mobile');
         }
@@ -105,6 +101,16 @@ window.Fotki.App = {
                     <label for="fg-opt-group">Sdružovat podle uživatelů</label>
                     <input type="checkbox" id="fg-opt-group">
                 </div>
+                
+                <div class="fg-setting-row">
+                    <label>Animace (GIF)</label>
+                    <select id="fg-opt-anim">
+                        <option value="off">Vypnuto (Šetří data)</option>
+                        <option value="hover">Přehrát při najetí myší</option>
+                        <option value="full">Vždy načíst (Pomalé)</option>
+                    </select>
+                </div>
+
                 <div class="fg-setting-row">
                     <label>Fotek na stránku (dávka)</label>
                     <input type="number" id="fg-opt-batch" min="10" max="200" step="10">
@@ -176,6 +182,9 @@ window.Fotki.App = {
                 root.querySelector('#fg-opt-sort').value = currentSettings.sortOrder;
                 root.querySelector('#fg-opt-batch').value = currentSettings.batchSize;
                 
+                // V6.5: Load Anim setting (default 'off')
+                root.querySelector('#fg-opt-anim').value = currentSettings.animMode || 'off';
+                
                 if (Array.isArray(currentSettings.deadHosts)) {
                     root.querySelector('#fg-opt-blacklist').value = currentSettings.deadHosts.join('\n');
                 } else {
@@ -201,6 +210,12 @@ window.Fotki.App = {
             if (val < 10) val = 10; 
             U.saveSettings({ batchSize: val }); 
         };
+        // V6.5: Anim setting handler
+        root.querySelector('#fg-opt-anim').onchange = (e) => {
+            U.saveSettings({ animMode: e.target.value });
+            this.forceRefresh();
+        };
+        
         root.querySelector('#fg-opt-blacklist').onchange = (e) => { 
             const raw = e.target.value; 
             const list = raw.split('\n').map(s => s.trim()).filter(s => s.length > 0); 
@@ -335,15 +350,18 @@ window.Fotki.App = {
         } 
     },
 
-    // Date-Aware Thumbnail Logic
+    isGif: function(url) {
+        return url.match(/\.gif$/i) !== null;
+    },
+
     getOpuThumb: function(url, postTs) {
+        // V6.5: Always skip Thumb logic for GIFs to avoid Dead Fish
+        if (this.isGif(url)) return url;
+
         if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) {
-            // Layer 1: Date Efficiency Check
-            // If post is older than Nov 27 2024, don't try the thumb at all.
             if (postTs && postTs < this.OPU_THUMB_LIMIT) {
                 return url;
             }
-            
             const parts = url.split('/');
             const filename = parts.pop();
             return parts.join('/') + '/thumbs/' + filename;
@@ -540,7 +558,8 @@ window.Fotki.App = {
                         const item = {
                             src: safeSrc, 
                             thumb: this.getOpuThumb(safeSrc, timestamp), 
-                            link: link, date: dateText, ts: timestamp, user: user
+                            link: link, date: dateText, ts: timestamp, user: user,
+                            isGif: this.isGif(safeSrc)
                         };
                         
                         this.seenUrls.add(safeSrc); 
@@ -843,47 +862,85 @@ window.Fotki.App = {
     },
 
     renderPhotoCards: function(container, photos, showUserLabel) { 
+        const U = window.Fotki.Utils;
+        const animMode = U.settings.animMode || 'off'; // 'off', 'hover', 'full'
+
         photos.forEach((item, index) => { 
             const card = document.createElement('div'); 
             card.className = 'fg-photo-card'; 
             const userHtml = showUserLabel ? `<span class="fg-photo-user">${item.user}</span>` : ''; 
             
-            card.innerHTML = `<div class="fg-photo-box"><img src="${item.thumb}" loading="lazy" data-orig="${item.src}"></div><div class="fg-photo-meta"><div>${userHtml}<span style="color:#aaa">${item.date}</span></div><a href="${item.link}" target="_blank" class="fg-link" title="Otevřít příspěvek v novém okně">➜</a></div>`; 
+            // --- V6.5: Smart GIF Handling ---
+            let mediaContent = '';
             
-            const img = card.querySelector('img'); 
-            const handleFail = () => { 
-                card.remove(); 
-                this.pruneItem(item); 
-            }; 
+            if (item.isGif && animMode !== 'full') {
+                // Placeholder Mode (Off or Hover)
+                mediaContent = `
+                    <div class="fg-gif-placeholder" data-src="${item.src}">
+                        <div class="fg-gif-label">GIF</div>
+                        <div class="fg-gif-hint">${animMode === 'hover' ? '▶ Přejet myší' : 'Kliknout'}</div>
+                    </div>
+                `;
+            } else {
+                // Normal Image (or GIF in Full mode)
+                mediaContent = `<img src="${item.thumb}" loading="lazy" data-orig="${item.src}">`;
+            }
+
+            card.innerHTML = `<div class="fg-photo-box">${mediaContent}</div><div class="fg-photo-meta"><div>${userHtml}<span style="color:#aaa">${item.date}</span></div><a href="${item.link}" target="_blank" class="fg-link" title="Otevřít příspěvek v novém okně">➜</a></div>`; 
             
-            const stuckTimer = setTimeout(() => { 
-                if (!img.complete || img.naturalWidth === 0) handleFail(); 
-            }, 15000); 
-            
-            img.onerror = () => { 
-                clearTimeout(stuckTimer); 
-                if (this.isTrustedHost(item.src) && img.src !== item.src) { 
-                    img.src = item.src; 
-                } else { 
-                    handleFail(); 
-                } 
-            }; 
-            
-            img.onload = () => { 
-                clearTimeout(stuckTimer); 
+            // Hover Logic for GIFs
+            if (item.isGif && animMode === 'hover') {
+                const box = card.querySelector('.fg-photo-box');
+                const placeholder = box.querySelector('.fg-gif-placeholder');
                 
-                // --- Layer 2: Dead Fish Detector ---
-                // If the loaded image is exactly 218x218px (Dead Fish), and we are trying to show a thumb...
-                if (img.naturalWidth === 218 && img.naturalHeight === 218) {
-                    if (img.src !== item.src) {
-                        // This means the thumbnail is broken (the fish). Revert to full size.
+                box.onmouseenter = () => {
+                    if (!box.querySelector('img')) {
+                        const img = document.createElement('img');
                         img.src = item.src;
-                        return;
+                        img.style.position = 'absolute';
+                        img.style.top = '0'; img.style.left = '0';
+                        img.style.width = '100%'; img.style.height = '100%';
+                        img.style.objectFit = 'contain';
+                        img.style.background = '#111';
+                        box.appendChild(img);
                     }
-                }
+                };
                 
-                if (img.naturalWidth > 0 && img.naturalWidth < 50) handleFail(); 
-            }; 
+                box.onmouseleave = () => {
+                    const img = box.querySelector('img');
+                    if (img) img.remove(); // Stop animation by removing
+                };
+            }
+
+            // Normal Error Handling (only if img exists initially)
+            const img = card.querySelector('img'); 
+            if (img) {
+                const handleFail = () => { 
+                    card.remove(); 
+                    this.pruneItem(item); 
+                }; 
+                
+                const stuckTimer = setTimeout(() => { 
+                    if (!img.complete || img.naturalWidth === 0) handleFail(); 
+                }, 15000); 
+                
+                img.onerror = () => { 
+                    clearTimeout(stuckTimer); 
+                    if (this.isTrustedHost(item.src) && img.src !== item.src) { 
+                        img.src = item.src; 
+                    } else { 
+                        handleFail(); 
+                    } 
+                }; 
+                
+                img.onload = () => { 
+                    clearTimeout(stuckTimer); 
+                    if (img.naturalWidth === 218 && img.naturalHeight === 218) {
+                        if (img.src !== item.src) { img.src = item.src; return; }
+                    }
+                    if (img.naturalWidth > 0 && img.naturalWidth < 50) handleFail(); 
+                }; 
+            }
             
             card.querySelector('.fg-photo-box').onclick = () => { 
                 this.openLightbox(index); 
