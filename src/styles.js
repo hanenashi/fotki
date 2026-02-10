@@ -30,11 +30,11 @@ window.Fotki.styles = `
     #fg-settings-panel.active { display: block; }
     
     .fg-settings-close-bar { display: none; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #444; text-align: right; }
+    
     .fg-setting-row { margin-bottom: 15px; box-sizing: border-box; }
     .fg-setting-row label { display: block; color: #aaa; margin-bottom: 5px; font-size: 12px; }
     .fg-setting-row select, .fg-setting-row input, .fg-setting-row textarea { background: #111; border: 1px solid #444; color: #eee; padding: 5px; width: 100%; border-radius: 3px; box-sizing: border-box; }
-    .fg-checkbox-row { display: flex; align-items: center; justify-content: space-between; }
-    .fg-checkbox-row input { width: auto; }
+    
     .fg-date-group { display: flex; gap: 10px; }
     .fg-btn-row { display: flex; gap: 10px; margin-top: 5px; }
     .fg-action-btn { flex: 2; padding: 8px; background: #d35400; color: white; border: none; font-weight: bold; }
@@ -74,13 +74,12 @@ window.Fotki.styles = `
     .fg-gif-hint { margin-top: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
     .fg-photo-card:hover .fg-gif-placeholder { background: #0a0a0a; }
 
-    /* V6.9: Animation Keyframes */
+    /* Animation Keyframes */
     @keyframes fg-shimmer {
         0% { background-position: -100% 0; }
         100% { background-position: 200% 0; }
     }
     
-    /* V6.9: Loading Animation Class */
     .fg-loading-anim {
         background: linear-gradient(90deg, #555 0%, #d35400 50%, #555 100%);
         background-size: 200% 100%;
@@ -91,7 +90,7 @@ window.Fotki.styles = `
     }
 
     .fg-hover-anim { 
-        pointer-events: none; /* Mouse ignores image, hits container below */
+        pointer-events: none; 
         z-index: 50; 
         background: #000;
         opacity: 0; 
@@ -142,7 +141,6 @@ window.Fotki.styles = `
         font-size: 28px; padding: 15px; height: auto; 
         max-width: 100%; 
     }
-    .fg-is-mobile input[type="checkbox"] { transform: scale(2); margin-right: 20px; }
     .fg-is-mobile .fg-action-btn, .fg-is-mobile .fg-reset-btn { font-size: 24px; padding: 20px; }
     .fg-is-mobile .fg-btn-row { gap: 20px; margin-top: 20px; }
 

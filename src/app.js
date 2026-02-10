@@ -3,12 +3,12 @@ window.Fotki = window.Fotki || {};
 window.Fotki.App = {
     isOpen: false,
     viewState: 'root', 
-    selectedUser: null,
+    selectedGroupKey: null, 
     isLightboxOpen: false,
 
     // Data
     allItems: [],
-    groupedData: {},
+    groupedData: {}, 
     currentList: [],
     currentIndex: 0,
     seenUrls: new Set(), 
@@ -18,7 +18,8 @@ window.Fotki.App = {
     isFetching: false,
     
     // Time Travel State
-    dateLimitMin: null, dateLimitMax: null,
+    dateLimitMin: null, 
+    dateLimitMax: null,
     isSeeking: false,
     stopRequested: false,
 
@@ -97,9 +98,13 @@ window.Fotki.App = {
                     <button id="fg-settings-close-mobile" class="fg-settings-close-btn">← Zavřít nastavení</button>
                 </div>
 
-                <div class="fg-setting-row fg-checkbox-row">
-                    <label for="fg-opt-group">Sdružovat podle uživatelů</label>
-                    <input type="checkbox" id="fg-opt-group">
+                <div class="fg-setting-row">
+                    <label>Sdružování</label>
+                    <select id="fg-opt-group-mode">
+                        <option value="none">Žádné (Plochý seznam)</option>
+                        <option value="user">Podle uživatelů</option>
+                        <option value="month">Podle měsíců</option>
+                    </select>
                 </div>
                 
                 <div class="fg-setting-row">
@@ -178,7 +183,14 @@ window.Fotki.App = {
             setPanel.classList.toggle('active');
             if (setPanel.classList.contains('active')) {
                 const currentSettings = U.loadSettings();
-                root.querySelector('#fg-opt-group').checked = currentSettings.groupByUser;
+                
+                let gMode = currentSettings.groupingMode;
+                if (!gMode) {
+                    if (currentSettings.groupByUser) gMode = 'user';
+                    else gMode = 'none';
+                }
+                root.querySelector('#fg-opt-group-mode').value = gMode;
+
                 root.querySelector('#fg-opt-sort').value = currentSettings.sortOrder;
                 root.querySelector('#fg-opt-batch').value = currentSettings.batchSize;
                 root.querySelector('#fg-opt-anim').value = currentSettings.animMode || 'off';
@@ -195,10 +207,11 @@ window.Fotki.App = {
             setPanel.classList.remove('active');
         };
 
-        root.querySelector('#fg-opt-group').onchange = (e) => { 
-            U.saveSettings({ groupByUser: e.target.checked }); 
+        root.querySelector('#fg-opt-group-mode').onchange = (e) => { 
+            U.saveSettings({ groupingMode: e.target.value }); 
             this.forceRefresh(); 
         };
+        
         root.querySelector('#fg-opt-sort').onchange = (e) => { 
             U.saveSettings({ sortOrder: e.target.value }); 
             this.forceRefresh(); 
@@ -283,7 +296,7 @@ window.Fotki.App = {
                     document.querySelector('#fg-settings-panel').classList.remove('active'); 
                     return; 
                 } 
-                if (self.viewState === 'photos' && window.Fotki.Utils.settings.groupByUser) { 
+                if (self.viewState === 'photos' && window.Fotki.Utils.settings.groupingMode !== 'none') { 
                     self.goBack(); 
                 } else { 
                     self.close(); 
@@ -317,33 +330,13 @@ window.Fotki.App = {
     },
 
     pruneItem: function(badItem) { 
+        // Simply filter from main list. 
+        // Re-grouping happens on render, so we don't need to manually clean the group object here.
         this.allItems = this.allItems.filter(i => i !== badItem); 
-        if (this.groupedData[badItem.user]) { 
-            this.groupedData[badItem.user] = this.groupedData[badItem.user].filter(i => i !== badItem); 
-            if (this.groupedData[badItem.user].length === 0) { 
-                delete this.groupedData[badItem.user]; 
-                if (this.viewState === 'root') { 
-                    const cards = Array.from(document.querySelectorAll('.fg-user-card')); 
-                    const userCard = cards.find(el => el.dataset.user === badItem.user); 
-                    if (userCard) userCard.remove(); 
-                } 
-            } 
-        } 
     },
 
     recoverUserCard: function(user) { 
-        if (this.viewState !== 'root') return; 
-        const photos = this.groupedData[user]; 
-        const card = Array.from(document.querySelectorAll('.fg-user-card')).find(el => el.dataset.user === user); 
-        if (!card) return; 
-        if (!photos || photos.length === 0) { 
-            card.remove(); 
-        } else { 
-            const img = card.querySelector('img'); 
-            if (img) img.src = photos[0].thumb; 
-            const countEl = card.querySelector('.fg-user-count'); 
-            if (countEl) countEl.innerText = photos.length; 
-        } 
+        // Deprecated in favor of dynamic regrouping, but kept safe
     },
 
     isAnim: function(url) {
@@ -559,8 +552,6 @@ window.Fotki.App = {
                         
                         this.seenUrls.add(safeSrc); 
                         this.allItems.push(item);
-                        if (!this.groupedData[user]) this.groupedData[user] = [];
-                        this.groupedData[user].push(item);
                         count++;
                     }
                 }
@@ -568,6 +559,35 @@ window.Fotki.App = {
         });
         
         return { count, nextLink: this.findNextPage(doc), stopSignal, oldestOnPage };
+    },
+
+    buildGroups: function() {
+        const U = window.Fotki.Utils;
+        let mode = U.settings.groupingMode;
+        if (!mode && U.settings.groupByUser) mode = 'user';
+        if (!mode) mode = 'none';
+
+        this.groupedData = {};
+
+        if (mode === 'none') return;
+
+        this.allItems.forEach(item => {
+            let key = '';
+            if (mode === 'user') {
+                key = item.user;
+            } else if (mode === 'month') {
+                if (!item.ts) key = 'Neznámé';
+                else {
+                    const d = new Date(item.ts);
+                    const y = d.getFullYear();
+                    const m = d.getMonth() + 1;
+                    key = `${y}-${String(m).padStart(2,'0')}`;
+                }
+            }
+
+            if (!this.groupedData[key]) this.groupedData[key] = [];
+            this.groupedData[key].push(item);
+        });
     },
 
     sortData: function() { 
@@ -582,9 +602,9 @@ window.Fotki.App = {
 
         if (sortFn) this.allItems.sort(sortFn); 
         
-        const userContentSort = (a, b) => b.ts - a.ts; 
-        Object.keys(this.groupedData).forEach(u => { 
-            this.groupedData[u].sort(userContentSort); 
+        const innerSort = (a, b) => b.ts - a.ts;
+        Object.keys(this.groupedData).forEach(k => { 
+            this.groupedData[k].sort(innerSort); 
         }); 
     },
 
@@ -716,17 +736,23 @@ window.Fotki.App = {
     },
 
     refreshView: function() { 
+        this.buildGroups();
         this.sortData(); 
         const U = window.Fotki.Utils; 
-        if (U.settings.groupByUser) { 
-            if (this.viewState === 'photos' && this.selectedUser) { 
-                this.renderUserPhotos(this.selectedUser); 
+        
+        let mode = U.settings.groupingMode;
+        if (!mode && U.settings.groupByUser) mode = 'user';
+        if (!mode) mode = 'none';
+
+        if (mode === 'none') {
+            this.renderFlatList();
+        } else {
+            if (this.viewState === 'photos' && this.selectedGroupKey) { 
+                this.renderUserPhotos(this.selectedGroupKey); 
             } else { 
-                this.renderRootUsers(); 
-            } 
-        } else { 
-            this.renderFlatList(); 
-        } 
+                this.renderGroups(mode); 
+            }
+        }
     },
 
     appendLoadMoreBtn: function(target) { 
@@ -754,83 +780,82 @@ window.Fotki.App = {
         } 
     },
 
-    renderRootUsers: function() { 
+    renderGroups: function(mode) { 
         this.viewState = 'root'; 
-        this.selectedUser = null; 
+        this.selectedGroupKey = null; 
         const target = document.getElementById('fg-content-target'); 
         document.getElementById('fg-breadcrumbs').innerHTML = ''; 
         document.getElementById('fg-back-btn').style.display = 'none'; 
         target.className = 'fg-user-grid'; 
         target.innerHTML = ''; 
         
-        const users = Object.keys(this.groupedData); 
+        const groupKeys = Object.keys(this.groupedData); 
         const s = window.Fotki.Utils.settings.sortOrder; 
-        const animMode = window.Fotki.Utils.settings.animMode || 'off'; // V7.0
+        const animMode = window.Fotki.Utils.settings.animMode || 'off';
         
-        if (s === 'name_asc') users.sort((a, b) => a.localeCompare(b)); 
-        else if (s === 'name_desc') users.sort((a, b) => b.localeCompare(a)); 
+        if (mode === 'user') {
+            if (s === 'name_asc') groupKeys.sort((a, b) => a.localeCompare(b)); 
+            else if (s === 'name_desc') groupKeys.sort((a, b) => b.localeCompare(a)); 
+        } else if (mode === 'month') {
+            if (s === 'oldest' || s === 'name_asc') groupKeys.sort(); 
+            else groupKeys.sort().reverse(); 
+        }
         
-        if (users.length === 0) { 
+        if (groupKeys.length === 0) { 
             target.innerHTML = '<div style="color:#666; padding:20px; text-align:center;">Žádné fotky.</div>'; 
             this.appendLoadMoreBtn(target); 
             return; 
         } 
         
-        users.forEach(user => { 
-            const photos = this.groupedData[user]; 
+        const monthNames = ["Leden", "Únor", "Březen", "Duben", "Květen", "Červen", "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec"];
+        const formatLabel = (key) => {
+            if (mode === 'user') return key;
+            if (mode === 'month') {
+                if (key === 'Neznámé') return key;
+                const [y, m] = key.split('-');
+                return `${monthNames[parseInt(m)-1]} ${y}`;
+            }
+            return key;
+        };
+
+        groupKeys.forEach(key => { 
+            const photos = this.groupedData[key]; 
             if (!photos.length) return; 
             
             const card = document.createElement('div'); 
             card.className = 'fg-user-card'; 
-            card.dataset.user = user; 
-            card.onclick = () => this.renderUserPhotos(user); 
+            card.dataset.key = key; 
+            card.onclick = () => this.renderUserPhotos(key); 
             
-            // --- V7.0: User Card Animation Logic ---
             const item = photos[0];
             let mediaHtml = '';
 
             if (item.isAnim && animMode === 'off') {
-                // Settings Off -> Placeholder
                 mediaHtml = `
                     <div class="fg-gif-placeholder" style="cursor:pointer; background:#181818">
                         <div class="fg-gif-label" style="font-size:14px; border-width:1px;">ANIM</div>
                     </div>
                 `;
             } else {
-                // Settings Hover/Full -> Show Image (prefer src for anims to avoid fish)
                 const src = item.isAnim ? item.src : item.thumb;
                 mediaHtml = `<img src="${src}" data-orig="${item.src}">`;
             }
 
-            card.innerHTML = `<div class="fg-user-thumb">${mediaHtml}<div class="fg-user-count">${photos.length}</div></div><div class="fg-user-info"><span class="fg-user-name">${user}</span></div>`; 
+            card.innerHTML = `<div class="fg-user-thumb">${mediaHtml}<div class="fg-user-count">${photos.length}</div></div><div class="fg-user-info"><span class="fg-user-name">${formatLabel(key)}</span></div>`; 
             
-            // Error handling for User Card (Fallbacks)
             const img = card.querySelector('img'); 
             if (img) {
                 let attempt = 0; 
-                
                 const tryNext = () => { 
                     attempt++; 
                     if (attempt < photos.length && attempt < 5) { 
-                        // Fallback logic: check next item's type too? 
-                        // For simplicity, just try loading its thumb.
                         img.src = photos[attempt].thumb; 
                     } else { 
                         card.remove(); 
                     } 
                 }; 
-                
-                img.onerror = () => { 
-                    if (this.isTrustedHost(item.src) && img.src !== item.src) { 
-                        img.src = item.src; 
-                    } else { 
-                        tryNext(); 
-                    } 
-                }; 
-                
-                img.onload = () => { 
-                    if (img.naturalWidth > 0 && img.naturalWidth < 50) tryNext(); 
-                }; 
+                img.onerror = () => { if (this.isTrustedHost(item.src) && img.src !== item.src) { img.src = item.src; } else { tryNext(); } }; 
+                img.onload = () => { if (img.naturalWidth > 0 && img.naturalWidth < 50) tryNext(); }; 
             }
             
             target.appendChild(card); 
@@ -839,26 +864,36 @@ window.Fotki.App = {
         this.appendLoadMoreBtn(target); 
     },
 
-    renderUserPhotos: function(user) { 
+    renderUserPhotos: function(groupKey) { 
         const U = window.Fotki.Utils; 
         U.showLoader(); 
         
+        const monthNames = ["Leden", "Únor", "Březen", "Duben", "Květen", "Červen", "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec"];
+        const formatLabel = (key) => {
+            const mode = U.settings.groupingMode || 'user';
+            if (mode === 'month' && key !== 'Neznámé') {
+                const [y, m] = key.split('-');
+                return `${monthNames[parseInt(m)-1]} ${y}`;
+            }
+            return key;
+        };
+
         setTimeout(() => { 
             this.viewState = 'photos'; 
-            this.selectedUser = user; 
+            this.selectedGroupKey = groupKey; 
             const target = document.getElementById('fg-content-target'); 
-            document.getElementById('fg-breadcrumbs').innerHTML = ` &rsaquo; <span>${user}</span>`; 
+            document.getElementById('fg-breadcrumbs').innerHTML = ` &rsaquo; <span>${formatLabel(groupKey)}</span>`; 
             document.getElementById('fg-back-btn').style.display = 'block'; 
             target.className = 'fg-photo-grid'; 
             target.innerHTML = ''; 
             
-            this.currentList = this.groupedData[user]; 
+            this.currentList = this.groupedData[groupKey]; 
             if (!this.currentList) { 
                 this.goBack(); 
                 return; 
             } 
             
-            this.renderPhotoCards(target, this.currentList, false); 
+            this.renderPhotoCards(target, this.currentList, true); 
             this.appendLoadMoreBtn(target); 
             U.hideLoader(); 
         }, 50); 
@@ -866,7 +901,7 @@ window.Fotki.App = {
 
     renderFlatList: function() { 
         this.viewState = 'root'; 
-        this.selectedUser = null; 
+        this.selectedGroupKey = null; 
         const target = document.getElementById('fg-content-target'); 
         document.getElementById('fg-breadcrumbs').innerHTML = ` &rsaquo; <span>Vše</span>`; 
         document.getElementById('fg-back-btn').style.display = 'none'; 
@@ -880,9 +915,8 @@ window.Fotki.App = {
 
     renderPhotoCards: function(container, photos, showUserLabel) { 
         const U = window.Fotki.Utils;
-        const animMode = U.settings.animMode || 'off'; // 'off', 'hover', 'full'
+        const animMode = U.settings.animMode || 'off';
 
-        // Helpers
         const createPlaceholder = (item) => {
             const wrap = document.createElement('div');
             wrap.className = 'fg-gif-placeholder';
@@ -895,32 +929,28 @@ window.Fotki.App = {
                 const hint = wrap.querySelector('.fg-gif-hint');
 
                 wrap.onmouseenter = (e) => {
-                    // Update Text
                     hint.innerText = 'Načítám...';
                     hint.classList.add('fg-loading-anim');
 
-                    // Load Image
                     const parent = e.target.closest('.fg-photo-box');
                     if (parent && !parent.querySelector('img')) {
                         const img = document.createElement('img');
                         img.src = item.src;
-                        img.className = 'fg-hover-anim'; // pointer-events: none!
+                        img.className = 'fg-hover-anim'; 
                         img.style.position = 'absolute';
                         img.style.top = '0'; img.style.left = '0';
                         img.style.width = '100%'; img.style.height = '100%';
                         img.style.objectFit = 'contain';
                         img.style.background = '#111';
-                        // Fade In
+                        
                         img.onload = () => img.classList.add('loaded');
                         parent.appendChild(img);
                     }
                 };
                 wrap.onmouseleave = (e) => {
-                    // Revert Text
                     hint.innerText = '▶ Přejet myší';
                     hint.classList.remove('fg-loading-anim');
 
-                    // Kill Image
                     const parent = e.target.closest('.fg-photo-box');
                     if (parent) {
                         const img = parent.querySelector('img');
@@ -964,14 +994,12 @@ window.Fotki.App = {
             if (usePlaceholder) {
                 box.appendChild(createPlaceholder(item));
             } else if (initialImg) {
-                // Error handlers
                 initialImg.onerror = () => {
                     box.innerHTML = '';
                     box.appendChild(createPlaceholder(item));
                 };
 
                 initialImg.onload = function() {
-                    // Dead Fish Detector
                     if (this.naturalWidth === 218 && this.naturalHeight === 218) {
                         if (this.src !== item.src) {
                             box.innerHTML = '';
