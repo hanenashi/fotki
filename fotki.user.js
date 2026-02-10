@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         fotki
 // @namespace    http://tampermonkey.net/
-// @version      6.3
+// @version      6.4
 // @description  Gallery with Lightbox (Mouse-Follow Zoom), Loading States & Settings
 // @author       kokochan
 // @match        https://www.okoun.cz/boards/*
@@ -10,20 +10,21 @@
 // @supportURL   https://github.com/hanenashi/fotki/issues
 // @updateURL    https://github.com/hanenashi/fotki/raw/main/fotki.user.js
 // @downloadURL  https://github.com/hanenashi/fotki/raw/main/fotki.user.js
-// @require      https://github.com/hanenashi/fotki/raw/main/src/styles.js?v=6.3
-// @require      https://github.com/hanenashi/fotki/raw/main/src/utils.js?v=6.3
-// @require      https://github.com/hanenashi/fotki/raw/main/src/lightbox.js?v=6.3
-// @require      https://github.com/hanenashi/fotki/raw/main/src/app.js?v=6.3
+// @require      https://github.com/hanenashi/fotki/raw/main/src/styles.js?v=6.4
+// @require      https://github.com/hanenashi/fotki/raw/main/src/utils.js?v=6.4
+// @require      https://github.com/hanenashi/fotki/raw/main/src/lightbox.js?v=6.4
+// @require      https://github.com/hanenashi/fotki/raw/main/src/app.js?v=6.4
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    // 1. Inject Styles
+    // 1. Inject Styles (Safe Mode for Greasemonkey)
     if (window.Fotki && window.Fotki.styles) {
         if (typeof GM_addStyle !== 'undefined') {
             GM_addStyle(window.Fotki.styles);
         } else {
+            // Fallback for Greasemonkey v4+ which lacks GM_addStyle
             const style = document.createElement('style');
             style.textContent = window.Fotki.styles;
             document.head.appendChild(style);

@@ -32,7 +32,7 @@ window.Fotki.App = {
     init: function() {
         const U = window.Fotki.Utils;
         
-        this.fixViewport();
+        // V6.4 FIX: Removed fixViewport(). Pure CSS scaling only.
 
         if (window.Fotki.styles) {
             if (typeof GM_addStyle !== 'undefined') {
@@ -56,15 +56,6 @@ window.Fotki.App = {
         return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
     },
 
-    fixViewport: function() {
-        if (!document.querySelector('meta[name="viewport"]')) {
-            const meta = document.createElement('meta');
-            meta.name = 'viewport';
-            meta.content = 'width=device-width, initial-scale=1.0';
-            document.head.appendChild(meta);
-        }
-    },
-
     injectButton: function() {
         const menu = document.querySelector('.head .nav .menu');
         if (!menu) return;
@@ -76,13 +67,13 @@ window.Fotki.App = {
         menu.appendChild(btn);
     },
 
-    // ... (buildOverlay omitted for brevity, no changes) ...
     buildOverlay: function() {
         const U = window.Fotki.Utils;
         const version = (typeof GM_info !== 'undefined' && GM_info.script) ? GM_info.script.version : 'Dev';
         const root = document.createElement('div');
         root.id = 'fotki-gallery-root';
         
+        // Apply Giant Mode class if mobile
         if (this.detectMobile()) {
             root.classList.add('fg-is-mobile');
         }
@@ -230,11 +221,10 @@ window.Fotki.App = {
 
         document.body.appendChild(root);
     },
-    // ...
 
     buildLightbox: function() { 
         const lb = document.createElement('div'); 
-        lb.id = 'fg-lightbox';
+        lb.id = 'fg-lightbox'; 
         
         if (this.detectMobile()) lb.classList.add('fg-is-mobile');
 
@@ -345,7 +335,7 @@ window.Fotki.App = {
         } 
     },
 
-    // --- V6.3: Date-Aware Thumbnail Logic ---
+    // Date-Aware Thumbnail Logic
     getOpuThumb: function(url, postTs) {
         if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) {
             // Layer 1: Date Efficiency Check
@@ -360,7 +350,6 @@ window.Fotki.App = {
         }
         return url;
     },
-    // ---------------------------------------
 
     resetData: function() {
         this.groupedData = {};
@@ -550,7 +539,6 @@ window.Fotki.App = {
 
                         const item = {
                             src: safeSrc, 
-                            // Pass timestamp to thumb generator
                             thumb: this.getOpuThumb(safeSrc, timestamp), 
                             link: link, date: dateText, ts: timestamp, user: user
                         };
