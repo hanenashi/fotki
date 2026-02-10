@@ -765,6 +765,7 @@ window.Fotki.App = {
         
         const users = Object.keys(this.groupedData); 
         const s = window.Fotki.Utils.settings.sortOrder; 
+        const animMode = window.Fotki.Utils.settings.animMode || 'off'; // V7.0
         
         if (s === 'name_asc') users.sort((a, b) => a.localeCompare(b)); 
         else if (s === 'name_desc') users.sort((a, b) => b.localeCompare(a)); 
@@ -784,32 +785,53 @@ window.Fotki.App = {
             card.dataset.user = user; 
             card.onclick = () => this.renderUserPhotos(user); 
             
-            card.innerHTML = `<div class="fg-user-thumb"><img src="${photos[0].thumb}" data-orig="${photos[0].src}"><div class="fg-user-count">${photos.length}</div></div><div class="fg-user-info"><span class="fg-user-name">${user}</span></div>`; 
+            // --- V7.0: User Card Animation Logic ---
+            const item = photos[0];
+            let mediaHtml = '';
+
+            if (item.isAnim && animMode === 'off') {
+                // Settings Off -> Placeholder
+                mediaHtml = `
+                    <div class="fg-gif-placeholder" style="cursor:pointer; background:#181818">
+                        <div class="fg-gif-label" style="font-size:14px; border-width:1px;">ANIM</div>
+                    </div>
+                `;
+            } else {
+                // Settings Hover/Full -> Show Image (prefer src for anims to avoid fish)
+                const src = item.isAnim ? item.src : item.thumb;
+                mediaHtml = `<img src="${src}" data-orig="${item.src}">`;
+            }
+
+            card.innerHTML = `<div class="fg-user-thumb">${mediaHtml}<div class="fg-user-count">${photos.length}</div></div><div class="fg-user-info"><span class="fg-user-name">${user}</span></div>`; 
             
+            // Error handling for User Card (Fallbacks)
             const img = card.querySelector('img'); 
-            const item = photos[0]; 
-            let attempt = 0; 
-            
-            const tryNext = () => { 
-                attempt++; 
-                if (attempt < photos.length && attempt < 5) { 
-                    img.src = photos[attempt].thumb; 
-                } else { 
-                    card.remove(); 
-                } 
-            }; 
-            
-            img.onerror = () => { 
-                if (this.isTrustedHost(item.src) && img.src !== item.src) { 
-                    img.src = item.src; 
-                } else { 
-                    tryNext(); 
-                } 
-            }; 
-            
-            img.onload = () => { 
-                if (img.naturalWidth > 0 && img.naturalWidth < 50) tryNext(); 
-            }; 
+            if (img) {
+                let attempt = 0; 
+                
+                const tryNext = () => { 
+                    attempt++; 
+                    if (attempt < photos.length && attempt < 5) { 
+                        // Fallback logic: check next item's type too? 
+                        // For simplicity, just try loading its thumb.
+                        img.src = photos[attempt].thumb; 
+                    } else { 
+                        card.remove(); 
+                    } 
+                }; 
+                
+                img.onerror = () => { 
+                    if (this.isTrustedHost(item.src) && img.src !== item.src) { 
+                        img.src = item.src; 
+                    } else { 
+                        tryNext(); 
+                    } 
+                }; 
+                
+                img.onload = () => { 
+                    if (img.naturalWidth > 0 && img.naturalWidth < 50) tryNext(); 
+                }; 
+            }
             
             target.appendChild(card); 
         }); 
