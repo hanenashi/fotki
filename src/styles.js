@@ -74,7 +74,22 @@ window.Fotki.styles = `
     .fg-gif-hint { margin-top: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
     .fg-photo-card:hover .fg-gif-placeholder { background: #0a0a0a; }
 
-    /* V6.8: Fixed Overlay Styles */
+    /* V6.9: Animation Keyframes */
+    @keyframes fg-shimmer {
+        0% { background-position: -100% 0; }
+        100% { background-position: 200% 0; }
+    }
+    
+    /* V6.9: Loading Animation Class */
+    .fg-loading-anim {
+        background: linear-gradient(90deg, #555 0%, #d35400 50%, #555 100%);
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: fg-shimmer 1.5s infinite linear;
+        font-weight: bold;
+    }
+
     .fg-hover-anim { 
         pointer-events: none; /* Mouse ignores image, hits container below */
         z-index: 50; 

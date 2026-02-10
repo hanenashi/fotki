@@ -26,6 +26,8 @@ window.Fotki.App = {
         'peklo.biz', 'opu.peklo.biz', 'pic.peklo.biz', 'flickr.com', 'static.flickr.com'
     ],
 
+    OPU_THUMB_LIMIT: new Date(2024, 10, 27).getTime(), 
+
     init: function() {
         const U = window.Fotki.Utils;
         
@@ -344,23 +346,17 @@ window.Fotki.App = {
         } 
     },
 
-    // V6.8: Expanded Check for all Anim formats
     isAnim: function(url) {
         return url.match(/\.(gif|webp|avif)$/i) !== null;
     },
 
-    // V6.8: Aggressively block thumb generation for anims on Opu
     getOpuThumb: function(url, postTs) {
-        if (this.isAnim(url)) return url; // Don't even try generating a thumb for these
+        if (this.isAnim(url)) return url; 
 
         if (url.includes('opu.peklo.biz/p/') && !url.includes('/thumbs/')) {
-            // Layer 1: Date check for standard JPG/PNGs
-            // (Nov 27, 2024 limit still applies to standard images)
-            const opuThumbLimit = new Date(2024, 10, 27).getTime();
-            if (postTs && postTs < opuThumbLimit) {
+            if (postTs && postTs < this.OPU_THUMB_LIMIT) {
                 return url;
             }
-            
             const parts = url.split('/');
             const filename = parts.pop();
             return parts.join('/') + '/thumbs/' + filename;
@@ -874,23 +870,35 @@ window.Fotki.App = {
             `;
             
             if (animMode === 'hover') {
+                const hint = wrap.querySelector('.fg-gif-hint');
+
                 wrap.onmouseenter = (e) => {
+                    // Update Text
+                    hint.innerText = 'Načítám...';
+                    hint.classList.add('fg-loading-anim');
+
+                    // Load Image
                     const parent = e.target.closest('.fg-photo-box');
                     if (parent && !parent.querySelector('img')) {
                         const img = document.createElement('img');
                         img.src = item.src;
-                        img.className = 'fg-hover-anim'; // IMPORTANT: pointer-events: none!
+                        img.className = 'fg-hover-anim'; // pointer-events: none!
                         img.style.position = 'absolute';
                         img.style.top = '0'; img.style.left = '0';
                         img.style.width = '100%'; img.style.height = '100%';
                         img.style.objectFit = 'contain';
                         img.style.background = '#111';
-                        // Fade in effect
+                        // Fade In
                         img.onload = () => img.classList.add('loaded');
                         parent.appendChild(img);
                     }
                 };
                 wrap.onmouseleave = (e) => {
+                    // Revert Text
+                    hint.innerText = '▶ Přejet myší';
+                    hint.classList.remove('fg-loading-anim');
+
+                    // Kill Image
                     const parent = e.target.closest('.fg-photo-box');
                     if (parent) {
                         const img = parent.querySelector('img');
@@ -918,39 +926,30 @@ window.Fotki.App = {
             
             const box = card.querySelector('.fg-photo-box');
 
-            // --- V6.8: Clean Logic for Anims ---
             let usePlaceholder = false;
             let initialImg = null;
 
             if (item.isAnim) {
-                // Animation Logic:
-                // If 'full' mode -> Load source directly.
-                // Else -> Show Placeholder (No thumb attempts for anims on Opu!)
                 if (animMode === 'full') {
                     initialImg = createFullImage(item.src);
                 } else {
                     usePlaceholder = true;
                 }
             } else {
-                // Standard Image Logic:
-                // Try to load thumbnail.
                 initialImg = createFullImage(item.thumb);
             }
 
             if (usePlaceholder) {
                 box.appendChild(createPlaceholder(item));
             } else if (initialImg) {
-                // Attach error/load handlers for Standard/Full
-                
+                // Error handlers
                 initialImg.onerror = () => {
-                    // Fallback to placeholder if thumb/full fails
                     box.innerHTML = '';
                     box.appendChild(createPlaceholder(item));
                 };
 
                 initialImg.onload = function() {
-                    // Dead Fish Detector (218x218)
-                    // If we somehow still got a dead fish (e.g. non-Opu host, or weird edge case)
+                    // Dead Fish Detector
                     if (this.naturalWidth === 218 && this.naturalHeight === 218) {
                         if (this.src !== item.src) {
                             box.innerHTML = '';
