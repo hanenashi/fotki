@@ -296,7 +296,6 @@ window.Fotki.App = {
                     document.querySelector('#fg-settings-panel').classList.remove('active'); 
                     return; 
                 } 
-                // V7.2 FIX: Correct way to check if we should go back
                 if (self.viewState === 'photos' && window.Fotki.Utils.settings.groupingMode !== 'none') { 
                     self.goBack(); 
                 } else { 
@@ -1016,11 +1015,46 @@ window.Fotki.App = {
         }); 
     },
 
-    // V7.2 FIX: Corrected goBack logic
+    openLightbox: function(index) { 
+        if (!this.currentList || this.currentList.length === 0) return; 
+        this.currentIndex = index; 
+        this.isLightboxOpen = true; 
+        this.updateLightboxContent(); 
+        document.getElementById('fg-lightbox').style.display = 'flex'; 
+    },
+
+    closeLightbox: function() { 
+        document.getElementById('fg-lightbox').style.display = 'none'; 
+        this.isLightboxOpen = false; 
+        window.Fotki.Lightbox.resetZoom(); 
+    },
+
+    changeImage: function(direction) { 
+        let newIndex = this.currentIndex + direction; 
+        if (newIndex < 0) newIndex = this.currentList.length - 1; 
+        if (newIndex >= this.currentList.length) newIndex = 0; 
+        this.currentIndex = newIndex; 
+        this.updateLightboxContent(); 
+    },
+
+    updateLightboxContent: function() { 
+        const item = this.currentList[this.currentIndex]; 
+        const imgEl = document.getElementById('fg-lb-img'); 
+        const metaEl = document.getElementById('fg-lb-meta-text'); 
+        const linkEl = document.getElementById('fg-lb-post-link'); 
+        
+        window.Fotki.Lightbox.resetZoom(); 
+        
+        imgEl.src = item.src; 
+        metaEl.innerHTML = `<span style="color:#d35400; font-weight:bold">${item.user}</span> &bull; ${item.date} (${this.currentIndex + 1} / ${this.currentList.length})`; 
+        linkEl.href = item.link; 
+    },
+
     goBack: function() { 
+        // V7.3: Correctly use refreshView to return to main grid
         this.viewState = 'root';
         this.selectedGroupKey = null;
-        this.refreshView(); // This now handles which view to render (groups/flat)
+        this.refreshView(); 
     },
 
     toggle: function() { 
@@ -1049,7 +1083,7 @@ window.Fotki.App = {
                 if (res.count < U.settings.batchSize && self.nextPageUrl) { 
                     self.loadMore(); 
                 } else { 
-                    // V7.2 FIX: Removed legacy renderRootUsers reference
+                    // V7.3: Use refreshView to route correctly
                     self.refreshView();
                     U.hideLoader(); 
                 } 
