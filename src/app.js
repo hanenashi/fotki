@@ -20,7 +20,6 @@ window.Fotki.App = {
     // Time Travel State
     dateLimitMin: null, 
     dateLimitMax: null,
-    isSeeking: false,
     stopRequested: false,
 
     trustedHosts: [
@@ -358,7 +357,6 @@ window.Fotki.App = {
         this.nextPageUrl = null;
         this.dateLimitMin = null;
         this.dateLimitMax = null;
-        this.isSeeking = false;
         this.stopRequested = false;
         document.getElementById('fg-status-msg').innerText = "Připraveno.";
     },
@@ -379,6 +377,7 @@ window.Fotki.App = {
         }
     },
 
+    // V7.4: The Native Teleporter Hook
     startTimeTravel: function(dateStop, dateStart) {
         const U = window.Fotki.Utils;
         
@@ -390,11 +389,6 @@ window.Fotki.App = {
             tsStart = tsStop;
             tsStop = temp;
         }
-
-        this.dateLimitMax = tsStart;
-        this.dateLimitMin = tsStop;
-        
-        let startUrl = window.location.href.split('?')[0]; 
         
         U.showLoader();
         this.resetData(); 
@@ -402,14 +396,23 @@ window.Fotki.App = {
         this.dateLimitMax = tsStart;
         this.dateLimitMin = tsStop;
         
+        let startUrl = window.location.href.split('?')[0]; 
+        
         if (this.dateLimitMax) {
-            this.isSeeking = true;
+            const targetDateObj = new Date(this.dateLimitMax);
+            const yyyy = targetDateObj.getFullYear();
+            const mm = String(targetDateObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(targetDateObj.getDate()).padStart(2, '0');
+            
+            // Native Okoun f-parameter (teleport to end of selected day)
+            const okounParam = `${yyyy}${mm}${dd}-235959`;
+            startUrl = `${startUrl}?f=${okounParam}`;
+
             this.toggleStatusBar(true);
-            this.updateStatus(`⏳ Cestuji v čase do ${new Date(this.dateLimitMax).toLocaleDateString()}...`);
+            this.updateStatus(`⏳ Teleportuji se na ${targetDateObj.toLocaleDateString()}...`);
             const stopBtn = document.getElementById('fg-stop-btn');
             if (stopBtn) stopBtn.style.display = 'block';
         } else {
-            this.isSeeking = false;
             this.toggleStatusBar(false);
         }
         
@@ -430,48 +433,8 @@ window.Fotki.App = {
         this.loadMore(true);
     },
 
-    parseUrlDate: function(url) {
-        const match = url.match(/[?&]f=(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/);
-        if (match) {
-            return new Date(match[1], match[2]-1, match[3], match[4], match[5], match[6]).getTime();
-        }
-        return null;
-    },
-
+    // V7.4: Vastly simplified to just find the standard "Starší" link
     findNextPage: function(doc) {
-        const self = this;
-        
-        if (self.isSeeking && self.dateLimitMax) {
-            let bestLink = null;
-            let bestLinkTs = 0;
-            const pagerLinks = doc.querySelectorAll('.pager a');
-            
-            pagerLinks.forEach(link => {
-                const linkTs = self.parseUrlDate(link.href);
-                if (linkTs) {
-                    if (linkTs >= self.dateLimitMax) {
-                        if (bestLink === null || linkTs < bestLinkTs) {
-                            bestLink = link.href;
-                            bestLinkTs = linkTs;
-                        }
-                    }
-                }
-            });
-            
-            let olderBtn = doc.querySelector('.pager .older a');
-            if (!olderBtn) {
-                for(let l of pagerLinks) {
-                    if (l.innerText.includes('Starší') || l.innerText.trim() === '>' || l.innerText.trim() === '›') olderBtn = l;
-                }
-            }
-            
-            let olderBtnTs = olderBtn ? self.parseUrlDate(olderBtn.href) : 0;
-
-            if (bestLink && olderBtnTs && bestLinkTs < olderBtnTs) {
-                return bestLink;
-            }
-        }
-
         let el = doc.querySelector('.pager .older a');
         if (el) return el.href;
         
@@ -485,12 +448,12 @@ window.Fotki.App = {
         return null;
     },
 
+    // V7.4: Removed complex seek bounds checking
+    // V7.4: Removed complex seek bounds checking
     extractData: function(doc) {
         const U = window.Fotki.Utils;
         let count = 0;
         let stopSignal = false; 
-        let newestOnPage = 0;
-        let oldestOnPage = 0;
 
         const posts = doc.querySelectorAll('.listing .item');
 
@@ -498,31 +461,14 @@ window.Fotki.App = {
             const dateEl = post.querySelector('.permalink a.date');
             const dateText = dateEl ? dateEl.innerText.trim() : '';
             const timestamp = U.parseCzechDate(dateText);
-            if (timestamp > 0) {
-                if (newestOnPage === 0 || timestamp > newestOnPage) newestOnPage = timestamp;
-                if (oldestOnPage === 0 || timestamp < oldestOnPage) oldestOnPage = timestamp;
-            }
-        });
 
-        if (this.isSeeking && this.dateLimitMax) {
-            if (oldestOnPage > 0 && oldestOnPage <= this.dateLimitMax) {
-                this.isSeeking = false;
-                this.updateStatus(`🎯 Nalezeno! Skenuji od ${new Date(this.dateLimitMax).toLocaleDateString()}...`);
-            }
-        }
-
-        posts.forEach(post => {
-            const dateEl = post.querySelector('.permalink a.date');
-            const dateText = dateEl ? dateEl.innerText.trim() : '';
-            const timestamp = U.parseCzechDate(dateText);
-
-            if (this.isSeeking) return;
-
+            // Boundary: Stop if post is older than target 'Do'
             if (this.dateLimitMin && timestamp > 0 && timestamp < this.dateLimitMin) {
                 stopSignal = true;
                 return;
             }
 
+            // Boundary: Ignore if post is strictly newer than 'Od' + 1 day
             if (this.dateLimitMax && timestamp > 0 && timestamp > (this.dateLimitMax + 86400000)) {
                 return; 
             }
@@ -552,7 +498,7 @@ window.Fotki.App = {
             });
         });
         
-        return { count, nextLink: this.findNextPage(doc), stopSignal, oldestOnPage };
+        return { count, nextLink: this.findNextPage(doc), stopSignal };
     },
 
     buildGroups: function() {
@@ -602,6 +548,7 @@ window.Fotki.App = {
         }); 
     },
 
+    // V7.4: Removed isSeeking timeout delays
     loadMore: async function(initialLoad = false) {
         if (!this.nextPageUrl || this.isFetching) return;
         
@@ -621,7 +568,7 @@ window.Fotki.App = {
         self.stopRequested = false;
 
         const targetCount = U.settings.batchSize;
-        const MAX_PAGES = (self.dateLimitMin || self.isSeeking) ? 1000 : 50; 
+        const MAX_PAGES = self.dateLimitMin ? 1000 : 50; 
         
         let loadedPhotos = 0;
         let pagesFetched = 0;
@@ -637,13 +584,10 @@ window.Fotki.App = {
                     break;
                 }
 
-                if (self.isSeeking) {
-                    if(btn) btn.textContent = `⏳ Cestuji v čase...`;
-                } else {
-                    if (pagesFetched > 0) await new Promise(r => setTimeout(r, 500));
-                    self.updateStatus(`📷 Skenuji... nalezeno: ${self.allItems.length} fotek`);
-                    if(btn) btn.textContent = `Hledám... (${self.allItems.length})`;
-                }
+                if (pagesFetched > 0) await new Promise(r => setTimeout(r, 500));
+                
+                self.updateStatus(`📷 Skenuji... nalezeno: ${self.allItems.length} fotek`);
+                if(btn) btn.textContent = `Hledám... (${self.allItems.length})`;
 
                 const response = await fetch(self.nextPageUrl);
                 if (!response.ok) throw new Error('Server status: ' + response.status);
@@ -652,16 +596,11 @@ window.Fotki.App = {
                 const parser = new DOMParser();
                 const newDoc = parser.parseFromString(text, 'text/html');
 
-                if (!newDoc.querySelector('.listing') && !newDoc.querySelector('.pager')) {
+                if (!newDoc.querySelector('.listing') && !newDoc.querySelector('.pager') && text.indexOf('Nejnovější') === -1) {
                     throw new Error('Neplatná stránka');
                 }
 
                 const result = self.extractData(newDoc);
-                
-                if (!result.nextLink && self.isSeeking && result.oldestOnPage > 0) {
-                    self.isSeeking = false;
-                    self.extractData(newDoc);
-                }
 
                 if (result.stopSignal) {
                     stopLoading = true;
@@ -694,8 +633,6 @@ window.Fotki.App = {
             } else if (!self.nextPageUrl) {
                 self.updateStatus(`✅ Hotovo. Celkem ${self.allItems.length} fotek.`);
                 if(stopBtn) stopBtn.style.display = 'none';
-            } else if (!self.isSeeking) {
-                if(stopBtn) stopBtn.style.display = 'none';
             }
 
             const freshBtn = document.querySelector('.fg-load-more-btn');
@@ -704,17 +641,7 @@ window.Fotki.App = {
                     freshBtn.textContent = 'Načíst starší';
                     freshBtn.disabled = false;
                 } else {
-                    if (document.querySelector('.listing .item')) {
-                         freshBtn.textContent = 'Zkusit najít další (konec?)';
-                         freshBtn.disabled = false;
-                         freshBtn.style.display = 'inline-block';
-                         freshBtn.onclick = () => { 
-                             if (!self.nextPageUrl) console.log("Really no URL found.");
-                             else self.loadMore(); 
-                         };
-                    } else {
-                        freshBtn.style.display = 'none';
-                    }
+                    freshBtn.style.display = 'none';
                 }
             }
         }
@@ -1051,7 +978,6 @@ window.Fotki.App = {
     },
 
     goBack: function() { 
-        // V7.3: Correctly use refreshView to return to main grid
         this.viewState = 'root';
         this.selectedGroupKey = null;
         this.refreshView(); 
@@ -1070,7 +996,6 @@ window.Fotki.App = {
         document.body.style.overflow = 'hidden'; 
         self.isOpen = true; 
         
-        // Reset stop flag on open
         self.stopRequested = false;
         
         if (self.allItems.length === 0) { 
@@ -1083,7 +1008,6 @@ window.Fotki.App = {
                 if (res.count < U.settings.batchSize && self.nextPageUrl) { 
                     self.loadMore(); 
                 } else { 
-                    // V7.3: Use refreshView to route correctly
                     self.refreshView();
                     U.hideLoader(); 
                 } 
